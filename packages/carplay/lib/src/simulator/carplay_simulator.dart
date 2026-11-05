@@ -201,6 +201,30 @@ class CarPlaySimulator extends CarPlayPlatform {
   Future<bool> get hasVideo async => _streaming || _testPattern;
 
   @override
+  Future<int?> get clusterTextureId async =>
+      _config.cluster != null && (_streaming || _frame != null) ? 1 : null;
+
+  @override
+  Future<bool> get hasClusterVideo async => _streaming && _config.cluster != null;
+
+  @override
+  Future<CarPlayVideoInfo?> get clusterVideoInfo async {
+    final cluster = _config.cluster;
+    if (!_streaming || cluster == null) {
+      return null;
+    }
+    return CarPlayVideoInfo(
+      width: cluster.width - cluster.width % 2,
+      height: cluster.height - cluster.height % 2,
+      decoder: 'simulated',
+    );
+  }
+
+  @override
+  Widget buildClusterProjection(BuildContext context, int textureId) =>
+      SimulatedCluster(phone: _phone);
+
+  @override
   Future<CarPlayVideoInfo?> get videoInfo async {
     final frame = _frame ?? _frameFor(_view);
     if (!_streaming && !_testPattern) {

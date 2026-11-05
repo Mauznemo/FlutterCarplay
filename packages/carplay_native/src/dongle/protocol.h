@@ -84,6 +84,10 @@ enum class Command : uint32_t {
   kReleaseVideoFocus = 501,
   kRequestNaviFocus = 506,
   kReleaseNaviFocus = 507,
+  // The cluster stream's handshake, both ways: one side sends it, the other answers,
+  // the first echoes, and 0x2C flows. Wired, the adapter starts it; wireless, the host.
+  kRequestNaviScreenFocus = 508,
+  kReleaseNaviScreenFocus = 509,
 
   // To the adapter, configuring it.
   kSiriButtonDown = 5,

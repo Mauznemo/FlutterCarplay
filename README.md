@@ -62,6 +62,8 @@ Everything else is on the controller:
 | Microphone | this machine's, opened only while Siri or a call wants it |
 | Metadata | `nowPlaying` with album art, `navigation` with the maneuver and distance, `call`, `phone`, `adapter` |
 | Requests | `requests` says when the driver taps the car's icon in CarPlay, `CarPlayRequest.showHostUi` |
+| Cluster | `CarPlayConfig.cluster` and `CarPlayClusterView`: CarPlay's instrument cluster stream in a second texture |
+| Car | `CarPlayConfig.safeArea` keeps CarPlay's controls clear of a bezel or your own buttons; `CarPlayConfig.gps` and `setLocation` give the phone the car's position |
 
 The example app under [`example/`](example/) is the reference integration.
 

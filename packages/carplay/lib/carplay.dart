@@ -16,6 +16,7 @@ export 'package:carplay_platform_interface/carplay_platform_interface.dart'
         CarPlayAudioStream,
         CarPlayCall,
         CarPlayCallState,
+        CarPlayCluster,
         CarPlayConfig,
         CarPlayConnectionState,
         CarPlayDriveSide,
@@ -35,6 +36,7 @@ export 'package:carplay_platform_interface/carplay_platform_interface.dart'
         CarPlayVideoInfo,
         CarPlayWifiBand;
 
+export 'src/carplay_cluster_view.dart';
 export 'src/carplay_controller.dart';
 export 'src/carplay_view.dart';
 export 'src/simulator/carplay_simulator.dart';

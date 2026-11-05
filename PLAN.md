@@ -27,7 +27,7 @@ backend later; `docs/research.md` says why.
 | M6 | Microphone: Siri and calls | written, the pipeline verified against the fake adapter |
 | M7 | Input: touch, keys, Siri button, night mode | written, unverified |
 | M8 | Metadata: now playing, album art, navigation, calls | written, now playing and navigation verified against the fake adapter |
-| M8b | Extras: safe area, the car's position, cluster video | safe area and position verified against the fake |
+| M8b | Extras: safe area, the car's position, cluster video | all three verified against the fake |
 | M9 | Wireless CarPlay through the adapter | written, unverified |
 | M10 | Robustness: replugs, restarts, firmware versions | **in progress**, every case passing against the fake adapter, none yet on hardware |
 | M11 | Packaging, CI, ARM64, release | in progress |
@@ -128,7 +128,8 @@ aasdk. Renamed to the `cp` namespace, aasdk's logger replaced by `src/log.h`.
 - [x] The car's position (`CarPlayConfig.gps`, `setLocation`): GPGGA and GPRMC sent while the phone asks (Command 18), once a second and on every new fix, `GNSSCapability` 3. Reaches the fake (`scenarios.sh features`). Found and fixed on the way: the NMEA had decimal commas under a German locale
 - [ ] Real: CarPlay keeps its controls inside the safe area
 - [ ] Real: Maps uses the car's position (and whether GnssData wants the u32 length prefix the CCPA docs show)
-- [ ] Instrument cluster video (`naviScreenInfo`, Command 508, the 0x2C stream) into a second texture
+- [x] Instrument cluster video (`CarPlayConfig.cluster`, `CarPlayClusterView`): `naviScreenInfo` in BoxSettings, the Command 508 handshake both ways (the adapter starts it over a cable, the head unit over Wi-Fi), the 0x2C stream into a second decoder and texture. Against the fake, both directions, verified by screenshot beside the main picture (`scenarios.sh features`, `CP_CLUSTER=1`)
+- [ ] Real: a phone sends the cluster stream (the CCPA docs disagree on whether stock units need an `AdvancedFeatures` unlock first)
 
 ## M9. Wireless CarPlay through the adapter
 

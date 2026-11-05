@@ -45,6 +45,12 @@ constexpr int64_t kResizeSettleUs = 1000000;
 // 60 fps, so more samples cannot be seen, and a desktop mouse produces hundreds.
 constexpr int64_t kMoveMinGapUs = 16000;
 
+// After Plugged, how long the adapter has to start the cluster handshake before the head
+// unit starts it. Over a cable the adapter does; over Wi-Fi it never does.
+constexpr int64_t kClusterOfferDelayUs = 2000000;
+// The most 508 echoes per phone, so the two sides cannot answer each other in a loop.
+// One is the handshake; the rest are for an adapter that offers again.
+constexpr int kMaxClusterEchoes = 3;
 // How often the car's position is repeated while the phone wants it, and the least
 // time between two fixes however fast the host app sets them.
 constexpr int64_t kFixRepeatUs = 1000000;
@@ -132,10 +138,12 @@ bool LooksLikeImage(const uint8_t* data, size_t size) {
 }  // namespace
 
 DongleSession::DongleSession(Hooks hooks, std::shared_ptr<VideoDecoder> decoder,
+                             std::shared_ptr<VideoDecoder> cluster_decoder,
                              std::shared_ptr<AudioOutput> audio,
                              std::shared_ptr<AudioInput> microphone)
     : hooks_(std::move(hooks)),
       decoder_(std::move(decoder)),
+      cluster_decoder_(std::move(cluster_decoder)),
       audio_(std::move(audio)),
       microphone_(std::move(microphone)),
       link_(
@@ -302,6 +310,15 @@ void DongleSession::Run() {
       if (!phone_connected_.load() && !reconnecting_.load()) {
         CP_LOG(info) << "[Dongle] no phone yet, putting the adapter into pairing mode";
         link_.Send(EncodeCommand(Command::kWifiPair));
+      }
+    }
+    // The adapter did not start the cluster handshake, as it does not over Wi-Fi.
+    const int64_t cluster_due = cluster_offer_due_us_.load();
+    if (cluster_due != 0 && now >= cluster_due) {
+      cluster_offer_due_us_ = 0;
+      if (phone_connected_.load() && !cluster_handshake_seen_.load()) {
+        CP_LOG(info) << "[Dongle] asking for the cluster stream";
+        link_.Send(EncodeCommand(Command::kRequestNaviScreenFocus));
       }
     }
     // A phone that asked for the car's position gets it every second, moving or not.
@@ -484,6 +501,25 @@ std::string DongleSession::BoxSettingsJson() const {
   if (!name.empty()) {
     json.AddString("boxName", name).AddString("btName", name).AddString("wifiName", name);
   }
+  if (config.cluster_width > 0 && config.cluster_height > 0) {
+    // Registers the cluster screen, which is what makes the phone offer its stream. The
+    // safe area spelled `safearea`, as in the capture it was verified from.
+    const int32_t width = config.cluster_width - config.cluster_width % 2;
+    const int32_t height = config.cluster_height - config.cluster_height % 2;
+    const std::string safe = Json()
+                                 .AddInt("width", width)
+                                 .AddInt("height", height)
+                                 .AddInt("x", 0)
+                                 .AddInt("y", 0)
+                                 .AddInt("outside", 0)
+                                 .Done();
+    json.AddRaw("naviScreenInfo", Json()
+                                      .AddInt("width", width)
+                                      .AddInt("height", height)
+                                      .AddInt("fps", config.cluster_fps)
+                                      .AddRaw("safearea", safe)
+                                      .Done());
+  }
   return json.Done();
 }
 
@@ -515,6 +551,11 @@ void DongleSession::PhoneGone(const std::string& why) {
   if (decoder_) {
     decoder_->Flush();
   }
+  if (cluster_decoder_) {
+    cluster_decoder_->Flush();
+  }
+  cluster_offer_due_us_ = 0;
+  got_cluster_video_ = false;
   if (audio_) {
     for (int i = 0; i < kAudioStreamCount; ++i) {
       audio_->EndStream(static_cast<AudioStream>(i));
@@ -680,12 +721,26 @@ void DongleSession::OnMessage(uint32_t type, const uint8_t* payload, size_t size
       paired_devices_ = ReadString(payload, size);
       break;
     }
-    case Type::kClusterVideoData:
-      if (!warned_cluster_video_) {
-        warned_cluster_video_ = true;
-        CP_LOG(info) << "[Dongle] cluster video arrived, which is not shown yet";
+    case Type::kClusterVideoData: {
+      VideoHeader header;
+      if (!cluster_decoder_) {
+        if (!warned_cluster_video_) {
+          warned_cluster_video_ = true;
+          CP_LOG(info) << "[Dongle] cluster video arrived with no cluster screen configured";
+        }
+        return;
       }
+      if (!ParseVideo(payload, size, &header) || size == kVideoHeaderSize ||
+          !phone_connected_.load()) {
+        return;
+      }
+      if (!got_cluster_video_.exchange(true)) {
+        CP_LOG(info) << "[Dongle] first cluster video, " << header.width << "x"
+                     << header.height;
+      }
+      cluster_decoder_->Submit(payload + kVideoHeaderSize, size - kVideoHeaderSize, NowUs());
       return;
+    }
     case Type::kUpdateProgress:
     case Type::kUpdateState: {
       uint32_t value = 0;
@@ -714,6 +769,10 @@ void DongleSession::OnPlugged(const Plugged& plugged) {
   carplay_phone_ = carplay;
   got_video_ = false;
   plugged_at_us_ = NowUs();
+  cluster_handshake_seen_ = false;
+  got_cluster_video_ = false;
+  cluster_echoes_ = 0;
+  cluster_offer_due_us_ = cluster_decoder_ && carplay ? NowUs() + kClusterOfferDelayUs : 0;
   phone_connected_ = true;
   CP_LOG(info) << "[Dongle] phone plugged, type " << static_cast<uint32_t>(plugged.phone_type)
                << (plugged.wireless ? ", wireless" : ", wired");
@@ -871,6 +930,26 @@ void DongleSession::OnCommand(uint32_t id) {
     case Command::kStopGnssReport:
       CP_LOG(info) << "[Dongle] the phone no longer wants the car's position";
       gnss_reporting_ = false;
+      return;
+    case Command::kRequestNaviScreenFocus: {
+      if (!cluster_decoder_) {
+        return;
+      }
+      cluster_handshake_seen_ = true;
+      // Echo it, which is the host's half whichever side started. Counted, since each
+      // side answers the other.
+      if (cluster_echoes_.fetch_add(1) < kMaxClusterEchoes) {
+        CP_LOG(info) << "[Dongle] cluster stream offered, answering";
+        link_.Send(EncodeCommand(Command::kRequestNaviScreenFocus));
+      }
+      return;
+    }
+    case Command::kReleaseNaviScreenFocus:
+      CP_LOG(info) << "[Dongle] the cluster stream ended";
+      if (cluster_decoder_) {
+        cluster_decoder_->Flush();
+      }
+      got_cluster_video_ = false;
       return;
     case Command::kRequestNaviFocus:
     case Command::kReleaseNaviFocus:

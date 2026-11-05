@@ -23,6 +23,10 @@ class CarPlayController extends ChangeNotifier {
   int? _textureId;
   bool _hasVideo = false;
   CarPlayVideoInfo? _videoInfo;
+  int? _clusterTextureId;
+  bool _hasClusterVideo = false;
+  CarPlayVideoInfo? _clusterVideoInfo;
+  Size? _clusterDisplaySize;
   Size? _viewSize;
   Size? _displaySize;
   CarPlayNowPlaying _nowPlaying = CarPlayNowPlaying.empty;
@@ -80,6 +84,16 @@ class CarPlayController extends ChangeNotifier {
   /// The size and decoder of the incoming video, or null while [hasVideo] is false.
   CarPlayVideoInfo? get videoInfo => _videoInfo;
 
+  /// Id of the instrument cluster's texture, or null without [CarPlayConfig.cluster].
+  int? get clusterTextureId => _clusterTextureId;
+
+  /// Whether the cluster texture shows the phone's cluster stream. Later than
+  /// [hasVideo]: the cluster stream starts after a handshake once the phone projects.
+  bool get hasClusterVideo => _hasClusterVideo;
+
+  /// The size of the cluster stream, or null while [hasClusterVideo] is false.
+  CarPlayVideoInfo? get clusterVideoInfo => _clusterVideoInfo;
+
   /// The track playing on the phone. [CarPlayNowPlaying.empty] while nothing is.
   CarPlayNowPlaying get nowPlaying => _nowPlaying;
 
@@ -122,6 +136,9 @@ class CarPlayController extends ChangeNotifier {
     _textureId = null;
     _hasVideo = false;
     _videoInfo = null;
+    _clusterTextureId = null;
+    _hasClusterVideo = false;
+    _clusterVideoInfo = null;
     _phone = null;
     _nowPlaying = CarPlayNowPlaying.empty;
     _navigation = CarPlayNavigation.inactive;
@@ -175,6 +192,19 @@ class CarPlayController extends ChangeNotifier {
     }
     _displaySize = physicalSize;
     _platform.setDisplaySize(physicalSize.width.round(), physicalSize.height.round());
+  }
+
+  /// Tells the head unit how many physical pixels the cluster texture is drawn across.
+  /// [CarPlayClusterView] calls this whenever it is laid out.
+  void setClusterDisplaySize(Size physicalSize) {
+    if (physicalSize == _clusterDisplaySize) {
+      return;
+    }
+    _clusterDisplaySize = physicalSize;
+    _platform.setClusterDisplaySize(
+      physicalSize.width.round(),
+      physicalSize.height.round(),
+    );
   }
 
   /// Reports a touch to the phone, in projected video pixels. [CarPlayView] does this
@@ -296,10 +326,21 @@ class CarPlayController extends ChangeNotifier {
     final id = await _platform.textureId;
     final live = await _platform.hasVideo;
     final info = await _platform.videoInfo;
-    if (id != _textureId || live != _hasVideo || info != _videoInfo) {
+    final clusterId = await _platform.clusterTextureId;
+    final clusterLive = await _platform.hasClusterVideo;
+    final clusterInfo = await _platform.clusterVideoInfo;
+    if (id != _textureId ||
+        live != _hasVideo ||
+        info != _videoInfo ||
+        clusterId != _clusterTextureId ||
+        clusterLive != _hasClusterVideo ||
+        clusterInfo != _clusterVideoInfo) {
       _textureId = id;
       _hasVideo = live;
       _videoInfo = info;
+      _clusterTextureId = clusterId;
+      _hasClusterVideo = clusterLive;
+      _clusterVideoInfo = clusterInfo;
       notifyListeners();
     }
   }

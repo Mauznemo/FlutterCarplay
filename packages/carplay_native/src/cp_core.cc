@@ -75,6 +75,10 @@ struct CpSession {
   std::unique_ptr<cp::GlAdapter> gl;
   std::unique_ptr<cp::TestPattern> pattern;
   std::shared_ptr<cp::VideoDecoder> decoder;
+  // The instrument cluster's own pipeline, only when the config names a cluster screen.
+  cp::FrameRing cluster_ring;
+  std::unique_ptr<cp::GlAdapter> cluster_gl;
+  std::shared_ptr<cp::VideoDecoder> cluster_decoder;
   std::shared_ptr<cp::AudioOutput> audio;
   std::shared_ptr<cp::AudioInput> microphone;
   std::unique_ptr<cp::dongle::DongleSession> dongle;
@@ -164,6 +168,12 @@ CpSession* cp_session_create(const CpConfig* config, CpEventCallback on_event) {
     resolved.safe_right = std::max(0, config->safe_right);
     resolved.safe_bottom = std::max(0, config->safe_bottom);
     resolved.gps = config->gps != 0;
+    if (config->cluster_width > 0 && config->cluster_height > 0) {
+      resolved.cluster_width = config->cluster_width;
+      resolved.cluster_height = config->cluster_height;
+      resolved.cluster_fps =
+          config->cluster_fps > 0 ? std::clamp(config->cluster_fps, 10, 60) : 30;
+    }
   }
 
   session->ring.Configure(session->PatternWidth(), session->PatternHeight());
@@ -205,6 +215,31 @@ CpSession* cp_session_create(const CpConfig* config, CpEventCallback on_event) {
     session->events.Emit(session->events.last_state(), message);
   });
 
+  if (resolved.cluster_width > 0) {
+    session->cluster_ring.Configure(resolved.cluster_width, resolved.cluster_height);
+    session->cluster_gl = std::make_unique<cp::GlAdapter>(&session->cluster_ring);
+    session->cluster_decoder = std::make_shared<cp::VideoDecoder>(
+        [session](const cp::Frame& frame, std::shared_ptr<void> keepalive) {
+          if (session->cluster_ring.PublishFrame(frame, std::move(keepalive))) {
+            session->cluster_gl->NotifyFrameAvailable();
+          }
+        },
+        [session](const std::string& message) {
+          session->events.Emit(session->events.last_state(), "Cluster: " + message);
+        },
+        [session](bool live) {
+          if (!live) {
+            session->cluster_ring.Reset();
+            session->cluster_gl->Clear();
+          }
+          session->events.Emit(session->events.last_state(),
+                               live ? "The cluster picture is on screen."
+                                    : "The cluster picture has ended.");
+        });
+    session->cluster_decoder->SetDmabufProbe(
+        []() { return cp::GlAdapter::DmabufSupported(); });
+  }
+
   cp::dongle::DongleSession::Hooks hooks;
   hooks.state = [session](cp::dongle::SessionState state, const std::string& message) {
     session->events.Emit(static_cast<CpState>(state), message);
@@ -220,7 +255,8 @@ CpSession* cp_session_create(const CpConfig* config, CpEventCallback on_event) {
     }
   };
   session->dongle = std::make_unique<cp::dongle::DongleSession>(
-      std::move(hooks), session->decoder, session->audio, session->microphone);
+      std::move(hooks), session->decoder, session->cluster_decoder, session->audio,
+      session->microphone);
   // CarPlay sends a keyframe when a stream starts and then hardly ever, so a decoder
   // that dropped its place asks for one rather than waiting.
   cp::dongle::DongleSession* dongle = session->dongle.get();
@@ -240,12 +276,16 @@ void cp_session_destroy(CpSession* session) {
   session->decoder->SetKeyframeRequest(nullptr);
   session->dongle.reset();
   session->decoder->Stop();
+  if (session->cluster_decoder) {
+    session->cluster_decoder->Stop();
+  }
   session->audio->SetTap(nullptr);
   session->audio->Stop();
   session->microphone->Stop();
   session->audio_callback = nullptr;
   session->pattern->Stop();
   session->gl.reset();
+  session->cluster_gl.reset();
   delete session;
 }
 
@@ -264,8 +304,15 @@ int32_t cp_session_start(CpSession* session) {
                          "point did not run.");
     return -2;
   }
+  if (session->cluster_gl && !session->cluster_gl->Register()) {
+    session->events.Emit(CP_STATE_ERROR, "Could not register the cluster's Flutter texture.");
+    return -2;
+  }
   session->ResolveFrameSize();
   session->decoder->Start();
+  if (session->cluster_decoder) {
+    session->cluster_decoder->Start();
+  }
   session->audio->Start();
   session->running = true;
   session->events.Emit(session->events.last_state(),
@@ -286,6 +333,9 @@ int32_t cp_session_stop(CpSession* session) {
   session->running = false;
   session->dongle->Stop();
   session->decoder->Flush();
+  if (session->cluster_decoder) {
+    session->cluster_decoder->Flush();
+  }
   return 0;
 }
 
@@ -578,6 +628,42 @@ int32_t cp_session_set_metadata_callback(CpSession* session, CpMetadataCallback 
 
 char* cp_session_adapter_info(CpSession* session) {
   return Duplicate(session == nullptr ? std::string("{}") : session->dongle->AdapterInfo());
+}
+
+int64_t cp_session_cluster_texture_id(CpSession* session) {
+  if (session == nullptr || !session->cluster_gl) {
+    return -1;
+  }
+  return session->cluster_gl->texture_id();
+}
+
+int32_t cp_session_cluster_video_active(CpSession* session) {
+  if (session == nullptr || !session->cluster_decoder) {
+    return 0;
+  }
+  return session->cluster_decoder->live() ? 1 : 0;
+}
+
+int32_t cp_session_cluster_video_width(CpSession* session) {
+  if (session == nullptr || !session->cluster_decoder) {
+    return 0;
+  }
+  return session->cluster_decoder->frame_width();
+}
+
+int32_t cp_session_cluster_video_height(CpSession* session) {
+  if (session == nullptr || !session->cluster_decoder) {
+    return 0;
+  }
+  return session->cluster_decoder->frame_height();
+}
+
+void cp_session_set_cluster_display_size(CpSession* session, int32_t width,
+                                         int32_t height) {
+  if (session == nullptr || !session->cluster_gl) {
+    return;
+  }
+  session->cluster_gl->SetDisplaySize(width, height);
 }
 
 int32_t cp_session_start_test_pattern(CpSession* session) {

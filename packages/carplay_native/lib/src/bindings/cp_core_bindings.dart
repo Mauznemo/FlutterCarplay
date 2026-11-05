@@ -614,6 +614,70 @@ class CpCoreBindings {
   late final _cp_session_adapter_info = _cp_session_adapter_infoPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>();
 
+  /// The instrument cluster's texture, the same shape of calls as the main one. -1 and 0
+  /// when the config named no cluster screen.
+  int cp_session_cluster_texture_id(ffi.Pointer<CpSession> session) {
+    return _cp_session_cluster_texture_id(session);
+  }
+
+  late final _cp_session_cluster_texture_idPtr =
+      _lookup<ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_cluster_texture_id',
+      );
+  late final _cp_session_cluster_texture_id = _cp_session_cluster_texture_idPtr
+      .asFunction<int Function(ffi.Pointer<CpSession>)>();
+
+  int cp_session_cluster_video_active(ffi.Pointer<CpSession> session) {
+    return _cp_session_cluster_video_active(session);
+  }
+
+  late final _cp_session_cluster_video_activePtr =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_cluster_video_active',
+      );
+  late final _cp_session_cluster_video_active = _cp_session_cluster_video_activePtr
+      .asFunction<int Function(ffi.Pointer<CpSession>)>();
+
+  int cp_session_cluster_video_width(ffi.Pointer<CpSession> session) {
+    return _cp_session_cluster_video_width(session);
+  }
+
+  late final _cp_session_cluster_video_widthPtr =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_cluster_video_width',
+      );
+  late final _cp_session_cluster_video_width = _cp_session_cluster_video_widthPtr
+      .asFunction<int Function(ffi.Pointer<CpSession>)>();
+
+  int cp_session_cluster_video_height(ffi.Pointer<CpSession> session) {
+    return _cp_session_cluster_video_height(session);
+  }
+
+  late final _cp_session_cluster_video_heightPtr =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_cluster_video_height',
+      );
+  late final _cp_session_cluster_video_height = _cp_session_cluster_video_heightPtr
+      .asFunction<int Function(ffi.Pointer<CpSession>)>();
+
+  void cp_session_set_cluster_display_size(
+    ffi.Pointer<CpSession> session,
+    int width,
+    int height,
+  ) {
+    return _cp_session_set_cluster_display_size(session, width, height);
+  }
+
+  late final _cp_session_set_cluster_display_sizePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<CpSession>, ffi.Int32, ffi.Int32)
+        >
+      >('cp_session_set_cluster_display_size');
+  late final _cp_session_set_cluster_display_size =
+      _cp_session_set_cluster_display_sizePtr
+          .asFunction<void Function(ffi.Pointer<CpSession>, int, int)>();
+
   /// Drives the texture from a generated pattern, for laying out an overlay with no
   /// adapter.
   int cp_session_start_test_pattern(ffi.Pointer<CpSession> session) {
@@ -888,6 +952,18 @@ final class CpConfig extends ffi.Struct {
   /// The phone then stops using its own receiver, so set it only for a car that has one.
   @ffi.Int32()
   external int gps;
+
+  /// A second screen for the instrument cluster, in pixels, which CarPlay fills with a
+  /// stream of its own into a second texture. Zero width for none.
+  @ffi.Int32()
+  external int cluster_width;
+
+  @ffi.Int32()
+  external int cluster_height;
+
+  /// Zero for 30.
+  @ffi.Int32()
+  external int cluster_fps;
 }
 
 /// State changes and news. `message` may be NULL; otherwise it is heap allocated and

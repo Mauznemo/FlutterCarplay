@@ -12,7 +12,8 @@
 #   sticky    the host dies mid session (kill -9) while the adapter clings to the phone,
 #             and the restarted host still gets a picture
 #   unplug    the phone leaves mid session and comes back
-#   features  a safe area and the car's position reach the adapter
+#   features  a safe area, the car's position and the cluster stream; and the
+#             cluster again with the head unit starting its handshake, as over Wi-Fi
 #
 # Needs what dev/fake-adapter.sh needs (sudo, kernel headers). Leaves the fake torn down
 # and the example not running. Logs: /tmp/cp-fake-adapter.log, /tmp/cp-example.log.
@@ -107,7 +108,15 @@ scenario_features() {
   tail -n +"$((mark + 1))" "$FAKE_LOG" | grep -q "HU_SAFEAREA_INFO = u32 760, 460, 40, 0, 1" &&
     # A point, not the locale's comma: 5231.2000, never 5231,2000.
     tail -n +"$((mark + 1))" "$FAKE_LOG" | grep -qE 'GnssData.*GPGGA,[0-9.]+,[0-9]{4}\.[0-9]{4},N' &&
-    tail -n +"$((mark + 1))" "$FAKE_LOG" | grep -q '"GNSSCapability":3'
+    tail -n +"$((mark + 1))" "$FAKE_LOG" | grep -q '"GNSSCapability":3' &&
+    tail -n +"$((mark + 1))" "$FAKE_LOG" | grep -q "the host echoed 508" || return 1
+  # Over Wi-Fi the adapter never starts the cluster handshake, so the head unit must.
+  fake --gnss --no-cluster-offer
+  mark=$(lines "$FAKE_LOG")
+  (cd "$REPO/example" &&
+    flutter test integration_test/features_test.dart -d linux 2>&1 | tail -n 3 |
+    grep -q "All tests passed") &&
+    tail -n +"$((mark + 1))" "$FAKE_LOG" | grep -q "answering the host's"
 }
 
 ALL=(basic phase13 sticky unplug features)

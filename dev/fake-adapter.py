@@ -57,6 +57,7 @@ T_MULTITOUCH = 0x17
 T_BOX_SETTINGS = 0x19
 T_GNSS = 0x29
 T_MEDIA = 0x2A
+T_CLUSTER_VIDEO = 0x2C
 T_SEND_FILE = 0x99
 T_BOX_CONFIG = 0xA2
 T_HEARTBEAT = 0xAA
@@ -69,7 +70,7 @@ TYPE_NAMES = {
     0x0D: "BluetoothDeviceName", 0x0E: "WifiDeviceName", 0x0F: "DisconnectPhone",
     0x11: "AutoConnectByBluetoothAddress", 0x12: "BluetoothPairedList",
     0x15: "CloseDongle", 0x17: "MultiTouch", 0x19: "BoxSettings", 0x22: "ForgetBluetoothAddr",
-    0x29: "GnssData", 0x2A: "MediaData", 0x6E: "NaviFocusRequest", 0x6F: "NaviFocusRelease",
+    0x29: "GnssData", 0x2A: "MediaData", 0x2C: "ClusterVideoData", 0x6E: "NaviFocusRequest", 0x6F: "NaviFocusRelease",
     0x77: "FactorySetting", 0x88: "DebugTest", 0x99: "SendFile", 0xA0: "AppInfo",
     0xA2: "BoxConfig", 0xAA: "HeartBeat", 0xCC: "SoftwareVersion", 0xCD: "Reboot",
     0xCE: "ResetUSB", 0xF0: "EnableCrypt", 0xFD: "DisplayReady",
@@ -266,6 +267,10 @@ class FakeAdapter:
         self.stats_lock = threading.Lock()
         self.album_art = None
         self.phase13_sent = False
+        # From the host's BoxSettings, and the 508 handshake's progress for this phone.
+        self.navi_screen = None
+        self.cluster_awaiting_echo = False
+        self.cluster_streaming_gen = None
 
     # -- USB plumbing --
 
@@ -439,14 +444,23 @@ class FakeAdapter:
             log("<- Command %d (%s), %d bytes" % (command, COMMAND_NAMES.get(command, "?"), size))
             if command == 12:
                 self.request_keyframe("Command 12")
+            elif command == 508:
+                self.on_cluster_focus()
         elif msg_type == T_FRAME and size == 0:
             log("<- Frame (0x0C), 0 bytes")
             self.request_keyframe("Frame message")
         elif msg_type == T_SEND_FILE:
             log("<- SendFile, %d bytes: %s" % (size, self.describe_send_file(payload)))
         elif msg_type in (T_BOX_SETTINGS, T_BOX_CONFIG):
-            log("<- %s, %d bytes: %s" % (name, size, payload.rstrip(b"\0").decode("utf-8",
-                                                                                  "replace")))
+            text = payload.rstrip(b"\0").decode("utf-8", "replace")
+            log("<- %s, %d bytes: %s" % (name, size, text))
+            try:
+                navi = json.loads(text).get("naviScreenInfo")
+            except ValueError:
+                navi = None
+            if isinstance(navi, dict) and navi.get("width") and navi.get("height"):
+                self.navi_screen = navi
+                log("the host has a cluster screen: %dx%d" % (navi["width"], navi["height"]))
         elif msg_type == T_MULTITOUCH:
             points = []
             for offset in range(0, size - 15, 16):
@@ -589,6 +603,8 @@ class FakeAdapter:
             threading.Thread(target=worker, args=(pgen,), daemon=True).start()
         if args.unplug_after is not None:
             self.later(args.unplug_after, alive, lambda: self.simulate_unplug(sgen, pgen))
+        if not args.no_cluster_offer:
+            self.later(2.0, alive, lambda: self.offer_cluster(pgen))
         if args.gnss:
             # The phone wants the car's position, which the adapter says with Command 18
             # (StartGNSSReport). The host answers with GnssData, logged as it arrives.
@@ -623,6 +639,36 @@ class FakeAdapter:
             self.later(self.args.plug_delay, lambda: self.session_gen == sgen and self.enabled,
                        lambda: self.plug(sgen))
 
+    def offer_cluster(self, pgen):
+        # Wired CarPlay: the adapter starts the handshake (docs/dongle-protocol.md 5.6).
+        if self.navi_screen is None or not self.phone_alive(pgen):
+            return
+        with self.lock:
+            self.cluster_awaiting_echo = True
+        log("-> Command 508, offering the cluster stream")
+        self.send(T_COMMAND, u32(508), pgen=pgen)
+
+    def on_cluster_focus(self):
+        with self.lock:
+            pgen = self.phone_gen
+            streaming = self.cluster_streaming_gen == pgen
+            awaiting = self.cluster_awaiting_echo
+            ready = self.phone and self.navi_screen is not None
+        if not ready or streaming:
+            return
+        if awaiting:
+            with self.lock:
+                self.cluster_awaiting_echo = False
+                self.cluster_streaming_gen = pgen
+            log("the host echoed 508, the cluster stream starts")
+            threading.Thread(target=self.cluster_video, args=(pgen,), daemon=True).start()
+        else:
+            # The host started it, as it has to over Wi-Fi: answer, and wait for its echo.
+            with self.lock:
+                self.cluster_awaiting_echo = True
+            log("-> Command 508, answering the host's")
+            self.send(T_COMMAND, u32(508), pgen=pgen)
+
     def request_keyframe(self, why):
         with self.lock:
             streaming = self.phone
@@ -634,16 +680,17 @@ class FakeAdapter:
 
     # -- video (section 5) --
 
-    def ffmpeg_command(self, width, height, fps, offset):
+    def ffmpeg_command(self, width, height, fps, offset, label="FAKE CARPLAY",
+                       source_name="testsrc2"):
         args = self.args
-        source = "testsrc2=size=%dx%d:rate=%d" % (width, height, fps)
+        source = "%s=size=%dx%d:rate=%d" % (source_name, width, height, fps)
         command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin",
                    "-f", "lavfi", "-i", source]
         if os.path.exists(args.font):
             size = max(16, height // 14)
             # The frame number keeps counting across encoder restarts, so a keyframe
             # request is visible as a jump nowhere but in the log.
-            text = "FAKE CARPLAY  %%{localtime\\:%%T}  frame %%{eif\\:n+%d\\:d}" % offset
+            text = "%s  %%{localtime\\:%%T}  frame %%{eif\\:n+%d\\:d}" % (label, offset)
             draw = ("drawtext=fontfile=%s:text='%s':fontsize=%d:fontcolor=white:"
                     "box=1:boxcolor=black@0.6:boxborderw=8:x=(w-tw)/2:y=h/6"
                     % (args.font, text, size))
@@ -706,16 +753,27 @@ class FakeAdapter:
 
     def video(self, pgen):
         params = self.open_params
-        width = (params[0] // 2) * 2
-        height = (params[1] // 2) * 2
-        fps = self.args.fps
+        self.stream_video(pgen, T_VIDEO, (params[0] // 2) * 2, (params[1] // 2) * 2,
+                          self.args.fps, "FAKE CARPLAY", 3, "testsrc2", "video")
+
+    def cluster_video(self, pgen):
+        info = self.navi_screen
+        # The cluster stream is a separate encoder at its own size and a low rate, as the
+        # real one is (docs/dongle-protocol.md 5.6), with encoder state 1.
+        self.stream_video(pgen, T_CLUSTER_VIDEO, (info["width"] // 2) * 2,
+                          (info["height"] // 2) * 2, min(10, info.get("fps", 10)),
+                          "FAKE CLUSTER", 1, "smptebars", "cluster")
+
+    def stream_video(self, pgen, msg_type, width, height, fps, label, state, source, name):
+        restartable = msg_type == T_VIDEO
         sent = 0
         started = time.monotonic()
         first = True
         while self.phone_alive(pgen):
-            self.keyframe_wanted.clear()
-            command = self.ffmpeg_command(width, height, fps, sent)
-            log("video: %dx%d at %d fps, encoder started" % (width, height, fps))
+            if restartable:
+                self.keyframe_wanted.clear()
+            command = self.ffmpeg_command(width, height, fps, sent, label, source)
+            log("%s: %dx%d at %d fps, encoder started" % (name, width, height, fps))
             proc = self.spawn(command)
             restart = False
             try:
@@ -733,16 +791,16 @@ class FakeAdapter:
                     # Back pressure: wait for the writer rather than queue frames up.
                     while self.write_queue.qsize() > 8 and self.phone_alive(pgen):
                         time.sleep(0.005)
-                    header = struct.pack("<5I", width, height, 3, int(sent * 1000 / fps), 0)
-                    self.send(T_VIDEO, header + au, quiet=True, pgen=pgen)
+                    header = struct.pack("<5I", width, height, state, int(sent * 1000 / fps), 0)
+                    self.send(msg_type, header + au, quiet=True, pgen=pgen)
                     if first:
                         first = False
-                        log("-> VideoData, first frame, %d bytes, NAL types %s" % (
-                            len(au) + 20, nal_types(au)))
+                        log("-> %s, first frame, %d bytes, NAL types %s" % (
+                            TYPE_NAMES.get(msg_type, msg_type), len(au) + 20, nal_types(au)))
                     sent += 1
                     if sent % (fps * 10) == 0:
-                        log("video: %d frames sent" % sent)
-                    if self.keyframe_wanted.is_set():
+                        log("%s: %d frames sent" % (name, sent))
+                    if restartable and self.keyframe_wanted.is_set():
                         restart = True
                         break
             finally:
@@ -751,9 +809,9 @@ class FakeAdapter:
                 first = True
                 continue
             if self.phone_alive(pgen):
-                log("video: the encoder ended on its own, restarting it")
+                log("%s: the encoder ended on its own, restarting it" % name)
                 time.sleep(0.5)
-        log("video: stopped after %d frames" % sent)
+        log("%s: stopped after %d frames" % (name, sent))
 
     # -- audio (section 6) --
 
@@ -909,6 +967,9 @@ def main():
                         help="ignore Open while a phone session is up, until the host sends "
                              "DisconnectPhone or CloseDongle, as a real CCPA does after its "
                              "host restarted")
+    parser.add_argument("--no-cluster-offer", action="store_true",
+                        help="never start the cluster handshake, as over Wi-Fi, so the host "
+                             "has to")
     parser.add_argument("--gnss", action="store_true",
                         help="once streaming, ask the host for the car's position "
                              "(Command 18)")

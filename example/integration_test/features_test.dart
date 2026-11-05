@@ -16,6 +16,7 @@ void main() {
     final controller = CarPlayController(
       config: const CarPlayConfig(
         gps: true,
+        cluster: CarPlayCluster(width: 640, height: 240),
         safeArea: EdgeInsets.only(left: 40, bottom: 20),
       ),
     );
@@ -44,6 +45,18 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
       await tester.pump();
     }
+    // The cluster stream follows the main one once the handshake completes.
+    final clusterDeadline = DateTime.now().add(const Duration(seconds: 20));
+    while (!controller.hasClusterVideo) {
+      if (DateTime.now().isAfter(clusterDeadline)) {
+        fail('No cluster picture. Last message: ${controller.message}');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await tester.pump();
+    }
+    expect(controller.clusterVideoInfo!.width, 640);
+    expect(controller.clusterVideoInfo!.height, 240);
+
     // A few seconds of a car driving east through Berlin, a fix every half second.
     for (var i = 0; i < 8; i++) {
       controller.setLocation(

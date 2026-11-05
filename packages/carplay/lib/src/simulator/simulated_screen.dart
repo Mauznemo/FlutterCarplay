@@ -693,3 +693,63 @@ class _SiriOrb extends StatelessWidget {
     );
   }
 }
+
+/// A drawn stand in for CarPlay's instrument cluster stream: the next turn, large, on a
+/// dark background, or the time while there is no route.
+class SimulatedCluster extends StatefulWidget {
+  /// The pretend phone this draws.
+  final SimulatedPhone phone;
+
+  /// Creates the cluster screen.
+  const SimulatedCluster({super.key, required this.phone});
+
+  @override
+  State<SimulatedCluster> createState() => _SimulatedClusterState();
+}
+
+class _SimulatedClusterState extends State<SimulatedCluster> {
+  @override
+  void initState() {
+    super.initState();
+    widget.phone.addListener(_changed);
+  }
+
+  @override
+  void dispose() {
+    widget.phone.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() => setState(() {});
+
+  @override
+  Widget build(BuildContext context) {
+    final phone = widget.phone;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final unit = constraints.biggest.shortestSide / 4;
+        return ColoredBox(
+          color: const Color(0xFF0B1220),
+          child: Center(
+            child: DefaultTextStyle(
+              style: TextStyle(color: const Color(0xFFFFFFFF), fontSize: unit * 0.5),
+              child: phone.routeActive
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${phone.metresToManeuver} m',
+                          style: TextStyle(fontSize: unit),
+                        ),
+                        SizedBox(width: unit * 0.5),
+                        Text(phone.road),
+                      ],
+                    )
+                  : const Text('SIMULATED CLUSTER'),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

@@ -26,6 +26,7 @@ Environment variables of the example app, not the plugin:
 | | |
 |---|---|
 | `CP_AUTOSTART=1` | press Start on launch |
+| `CP_CLUSTER=1` | adds an instrument cluster screen, shown small in the corner of the projection |
 | `CP_SIMULATE=1` | use `CarPlaySimulator` instead of the adapter, as macOS and Windows always do |
 | `CP_TEST_PATTERN=1` | start the test pattern on launch |
 | `CP_LOG_LEVEL=DEBUG` | the plugin's native log, every adapter message included |

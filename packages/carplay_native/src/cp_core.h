@@ -159,6 +159,12 @@ typedef struct {
   // 1 when the car will give the phone its position through cp_session_set_location.
   // The phone then stops using its own receiver, so set it only for a car that has one.
   int32_t gps;
+  // A second screen for the instrument cluster, in pixels, which CarPlay fills with a
+  // stream of its own into a second texture. Zero width for none.
+  int32_t cluster_width;
+  int32_t cluster_height;
+  // Zero for 30.
+  int32_t cluster_fps;
 } CpConfig;
 
 // State changes and news. `message` may be NULL; otherwise it is heap allocated and
@@ -266,6 +272,15 @@ CP_EXPORT int32_t cp_session_set_metadata_callback(CpSession* session,
                                                    CpMetadataCallback on_metadata);
 // The CP_METADATA_ADAPTER JSON as it stands. Free with cp_string_free.
 CP_EXPORT char* cp_session_adapter_info(CpSession* session);
+
+// The instrument cluster's texture, the same shape of calls as the main one. -1 and 0
+// when the config named no cluster screen.
+CP_EXPORT int64_t cp_session_cluster_texture_id(CpSession* session);
+CP_EXPORT int32_t cp_session_cluster_video_active(CpSession* session);
+CP_EXPORT int32_t cp_session_cluster_video_width(CpSession* session);
+CP_EXPORT int32_t cp_session_cluster_video_height(CpSession* session);
+CP_EXPORT void cp_session_set_cluster_display_size(CpSession* session, int32_t width,
+                                                   int32_t height);
 
 // Drives the texture from a generated pattern, for laying out an overlay with no
 // adapter.

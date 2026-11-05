@@ -70,6 +70,23 @@ enum CarPlayDriveSide {
   right,
 }
 
+/// A second screen for the instrument cluster, which CarPlay fills with a stream of its
+/// own: a map with the next turn, drawn by the phone for the driver's eyeline.
+class CarPlayCluster {
+  /// Width of the cluster picture in pixels.
+  final int width;
+
+  /// Height of the cluster picture in pixels.
+  final int height;
+
+  /// The most frames per second. The cluster stream sends far fewer while the map is
+  /// still.
+  final int fps;
+
+  /// Describes a cluster screen.
+  const CarPlayCluster({required this.width, required this.height, this.fps = 30});
+}
+
 /// How the head unit describes itself to the adapter and the phone.
 ///
 /// Read when the adapter is configured, which is on [CarPlayPlatform.start] and again
@@ -166,6 +183,11 @@ class CarPlayConfig {
   /// that the hard way. The adapter may need a reboot before a change reaches the phone.
   final bool gps;
 
+  /// A screen in the instrument cluster for CarPlay's own cluster stream, shown with
+  /// `CarPlayClusterView`. Null for none. Read when the adapter is configured; a phone
+  /// that supports it (iOS 13 and later) sends the stream once a handshake completes.
+  final CarPlayCluster? cluster;
+
   /// Creates a head unit description. The defaults suit a CPC200-CCPA on a screen of
   /// any size.
   const CarPlayConfig({
@@ -188,6 +210,7 @@ class CarPlayConfig {
     this.followViewResize = true,
     this.safeArea = EdgeInsets.zero,
     this.gps = false,
+    this.cluster,
   });
 }
 
@@ -525,6 +548,24 @@ abstract class CarPlayPlatform extends PlatformInterface {
   /// no native video to show.
   Widget buildProjection(BuildContext context, int textureId) =>
       Texture(textureId: textureId);
+
+  /// The instrument cluster's texture, or null with no [CarPlayConfig.cluster] or before
+  /// the first start.
+  Future<int?> get clusterTextureId async => null;
+
+  /// Whether the cluster texture holds a picture from the phone connected now.
+  Future<bool> get hasClusterVideo async => false;
+
+  /// What the cluster stream is sending, or null while there is no cluster picture.
+  Future<CarPlayVideoInfo?> get clusterVideoInfo async => null;
+
+  /// The widget the cluster is drawn with. A [Texture] unless an implementation has no
+  /// native video to show.
+  Widget buildClusterProjection(BuildContext context, int textureId) =>
+      Texture(textureId: textureId);
+
+  /// The size the cluster texture is drawn at, in physical pixels.
+  void setClusterDisplaySize(int width, int height) {}
 
   /// The view's size in physical pixels. With no size in the config, the frame the
   /// phone is asked for follows this.

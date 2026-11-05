@@ -112,6 +112,39 @@ class CarPlayNative extends CarPlayPlatform {
   }
 
   @override
+  Future<int?> get clusterTextureId async {
+    if (_session == nullptr) {
+      return null;
+    }
+    final id = _bindings.cp_session_cluster_texture_id(_session);
+    return id < 0 ? null : id;
+  }
+
+  @override
+  Future<bool> get hasClusterVideo async =>
+      _session != nullptr && _bindings.cp_session_cluster_video_active(_session) != 0;
+
+  @override
+  Future<CarPlayVideoInfo?> get clusterVideoInfo async {
+    if (_session == nullptr) {
+      return null;
+    }
+    final width = _bindings.cp_session_cluster_video_width(_session);
+    final height = _bindings.cp_session_cluster_video_height(_session);
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
+    return CarPlayVideoInfo(width: width, height: height, decoder: 'cluster');
+  }
+
+  @override
+  void setClusterDisplaySize(int width, int height) {
+    if (_session != nullptr) {
+      _bindings.cp_session_set_cluster_display_size(_session, width, height);
+    }
+  }
+
+  @override
   Future<void> start(CarPlayConfig config) async {
     // A stopped session is restarted, not rebuilt, so the texture id and the audio
     // settings carry over.
@@ -174,7 +207,10 @@ class CarPlayNative extends CarPlayPlatform {
         ..safe_top = (config.safeArea.top * ratio).round()
         ..safe_right = (config.safeArea.right * ratio).round()
         ..safe_bottom = (config.safeArea.bottom * ratio).round()
-        ..gps = config.gps ? 1 : 0;
+        ..gps = config.gps ? 1 : 0
+        ..cluster_width = config.cluster?.width ?? 0
+        ..cluster_height = config.cluster?.height ?? 0
+        ..cluster_fps = config.cluster?.fps ?? 0;
       _nightMode ??= config.nightMode;
 
       _session = _bindings.cp_session_create(native, _eventCallback!.nativeFunction);

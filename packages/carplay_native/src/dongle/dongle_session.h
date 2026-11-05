@@ -90,6 +90,11 @@ struct SessionConfig {
   int32_t safe_bottom = 0;
   // Whether the car has a position to give the phone, through SetLocation.
   bool gps = false;
+  // A second screen for the instrument cluster, which CarPlay fills with a stream of its
+  // own (turn by turn on a map). Zero width for none.
+  int32_t cluster_width = 0;
+  int32_t cluster_height = 0;
+  int32_t cluster_fps = 30;
 };
 
 // One finger as Dart reports it: projected video pixels.
@@ -127,7 +132,10 @@ class DongleSession {
     std::function<void(MetadataKind kind, const std::string& json)> metadata;
   };
 
+  // `cluster_decoder` takes the instrument cluster stream; null for a head unit with no
+  // cluster screen.
   DongleSession(Hooks hooks, std::shared_ptr<VideoDecoder> decoder,
+                std::shared_ptr<VideoDecoder> cluster_decoder,
                 std::shared_ptr<AudioOutput> audio, std::shared_ptr<AudioInput> microphone);
   ~DongleSession();
 
@@ -214,6 +222,7 @@ class DongleSession {
 
   Hooks hooks_;
   std::shared_ptr<VideoDecoder> decoder_;
+  std::shared_ptr<VideoDecoder> cluster_decoder_;
   std::shared_ptr<AudioOutput> audio_;
   std::shared_ptr<AudioInput> microphone_;
   UsbLink link_;
@@ -245,6 +254,13 @@ class DongleSession {
   std::atomic<bool> phase13_retried_{false};
   // The phone asked for the car's position and has not said stop.
   std::atomic<bool> gnss_reporting_{false};
+  // The cluster handshake for this phone: whether either side has started it, when the
+  // head unit starts it itself if the adapter has not, and the last echo, rationed
+  // because each side answers the other.
+  std::atomic<bool> cluster_handshake_seen_{false};
+  std::atomic<int64_t> cluster_offer_due_us_{0};
+  std::atomic<int> cluster_echoes_{0};
+  std::atomic<bool> got_cluster_video_{false};
   std::mutex fix_mutex_;
   GnssFix fix_;
   bool has_fix_ = false;

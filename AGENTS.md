@@ -236,6 +236,17 @@ microphone, and unplug and replug timing (`setup -- --help`). Log in `/tmp/cp-fa
 - Loading `dummy_hcd` taints the kernel until the next reboot. Harmless, but say so.
 - Tear it down when done, and never leave the example running against it.
 
+## The instrument cluster
+
+A second pipeline beside the main one, built only when `CarPlayConfig.cluster` names a screen:
+its own `FrameRing`, `GlAdapter`, `VideoDecoder` and texture in `cp_core.cc`, fed from 0x2C by
+`DongleSession`. The stream starts after a Command 508 handshake: one side sends 508, the other
+answers, the first echoes. Over a cable the adapter starts it; over Wi-Fi it never does, so the
+head unit starts it two seconds after Plugged if nothing came. Echoes are counted per phone
+(`kMaxClusterEchoes`), not timed: a time gap swallowed the echo to the adapter's answer, which
+arrives within milliseconds of the head unit's own 508. No keyframe requests for the cluster
+stream: nothing documents one, and it sends an IDR about every 26 s anyway.
+
 ## Numbers in wire formats
 
 **Never format a double with printf into anything that goes on the wire.** The Flutter app runs

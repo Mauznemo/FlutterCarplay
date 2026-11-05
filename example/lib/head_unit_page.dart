@@ -108,6 +108,14 @@ class _HeadUnitPageState extends State<HeadUnitPage> {
                   bottom: 12,
                   child: MetadataOverlay(controller: _controller),
                 ),
+                if (_controller.config.cluster != null)
+                  Positioned(
+                    right: 12,
+                    top: 12,
+                    width: 400,
+                    height: 120,
+                    child: CarPlayClusterView(controller: _controller),
+                  ),
                 if (_adapterPanelOpen)
                   Positioned(
                     right: 12,
