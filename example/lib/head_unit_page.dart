@@ -93,7 +93,7 @@ class _HeadUnitPageState extends State<HeadUnitPage> {
       backgroundColor: Colors.black,
       body: Column(
         children: [
-          StatusBar(controller: _controller),
+          StatusBar(controller: _controller, lastInput: _lastInput),
           Expanded(
             child: Stack(
               children: [
@@ -121,14 +121,6 @@ class _HeadUnitPageState extends State<HeadUnitPage> {
                       onBack: () => setState(() => _hostUiShown = false),
                     ),
                   ),
-                Positioned(
-                  right: 12,
-                  bottom: 12,
-                  child: Text(
-                    'last input: $_lastInput',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
               ],
             ),
           ),

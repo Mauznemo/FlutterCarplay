@@ -36,3 +36,4 @@ export 'package:carplay_platform_interface/carplay_platform_interface.dart'
 
 export 'src/carplay_controller.dart';
 export 'src/carplay_view.dart';
+export 'src/simulator/carplay_simulator.dart';

@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 /// the phone lays itself out for the space below.
 class StatusBar extends StatelessWidget {
   final CarPlayController controller;
+  final String lastInput;
 
-  const StatusBar({super.key, required this.controller});
+  const StatusBar({super.key, required this.controller, required this.lastInput});
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +39,9 @@ class StatusBar extends StatelessWidget {
           if (adapter.softwareVersion != null)
             Text('adapter ${adapter.softwareVersion}', style: style),
           const Spacer(),
+          // Here rather than over the projection, where it would take the taps under it.
+          Text('last input: $lastInput', style: style),
+          const SizedBox(width: 12),
           if (controller.microphoneActive)
             Icon(Icons.mic, size: 18, color: theme.colorScheme.error),
           const SizedBox(width: 8),

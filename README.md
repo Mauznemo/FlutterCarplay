@@ -65,6 +65,12 @@ Everything else is on the controller:
 
 The example app under [`example/`](example/) is the reference integration.
 
+**On macOS and Windows the package runs a simulator** rather than failing, because that is where
+most Flutter apps are written. `start()` connects a pretend adapter and iPhone that draw a
+labelled stand in for CarPlay, react to touches and keys through the same view and controller,
+and send now playing, guidance, calls and the car icon's request on the same streams.
+`CarPlaySimulator.registerWith()` puts it on Linux too.
+
 ## Repository layout
 
 ```

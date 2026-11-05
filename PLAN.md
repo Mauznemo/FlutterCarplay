@@ -30,7 +30,7 @@ backend later; `docs/research.md` says why.
 | M9 | Wireless CarPlay through the adapter | written, unverified |
 | M10 | Robustness: replugs, restarts, firmware versions | **in progress**, every case passing against the fake adapter, none yet on hardware |
 | M11 | Packaging, CI, ARM64, release | in progress |
-| M12 | Simulator for macOS and Windows | not started |
+| M12 | Simulator for macOS and Windows | **done**, bar running it on a Mac or Windows machine |
 | M13 | Native CarPlay backend | not started |
 | M14 | Android as the head unit | not started |
 
@@ -156,8 +156,11 @@ Each case first against the fake adapter (which only proves the plugin does what
 android_auto registers a pure Dart simulator there, because most host apps are written on a Mac
 or a Windows machine. The same idea here, sharing as much of its shape as makes sense.
 
-- [ ] `CarPlaySimulator` in `packages/carplay`, through the same seams as a phone
-- [ ] Registered with `dartPluginClass` for macOS and Windows
+- [x] `CarPlaySimulator` in `packages/carplay`, through the same seams as a phone: a dock, home screen, maps with guidance, music, phone with calls, Siri, the car icon sending `showHostUi`, night mode, following a resize
+- [x] Registered with `dartPluginClass` for macOS and Windows; `CP_SIMULATE=1` in the example on Linux
+- [x] Verified by screenshot on Linux: two clicks through the real view opened Maps and started a route, and the example's own turn card followed the simulated guidance
+- [x] Tests in fake time (`packages/carplay/test/simulator_test.dart`)
+- [ ] Built and run on macOS or Windows (CI's job, once CI runs)
 
 ## M13. Native CarPlay backend
 

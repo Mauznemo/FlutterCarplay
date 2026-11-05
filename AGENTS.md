@@ -153,6 +153,25 @@ about them (GL texture units, `GlStateGuard`, the dmabuf import, the audio write
 microphone only opening when asked); they hold here unchanged, read them before touching those
 files. `CarPlayView` is likewise a port of `AndroidAutoView`.
 
+## macOS and Windows, which run a simulator
+
+Most host apps are written on a Mac or a Windows machine, so `carplay` registers
+`CarPlaySimulator` there (`dartPluginClass` in its pubspec, no native code). It lives in
+`packages/carplay/lib/src/simulator/`, and `CP_SIMULATE=1` puts it in the example on Linux. The
+same rules as android_auto's simulator:
+
+- **It goes through the same seams as a phone.** The view maps touches and calls `sendTouch` in
+  projected video pixels; the simulator hit tests them against its own drawn screen through
+  `MetaData` targets rather than taking Flutter gestures.
+- **Its frame size is `src/frame_size.cc` ported to Dart** (`simulator/frame_size.dart`).
+  Change one and change the other; a test in each pins the same cases.
+- **Nothing in it may need the engine to finish a future**, because a host app's own tests run
+  against it. Its cover is painted, not decoded from the PNG it sends on `nowPlaying`.
+- **Its tests run in fake time.** Make the simulator and controller inside the test, not in
+  `setUp` (events scheduled from outside the fake zone are never delivered by `pump()`), drive
+  the zero delays with `pump`, never `runAsync`, and never `await` a stream subscription's
+  `cancel()`: in fake time it completes on a timer nothing pumps, and the test hangs silently.
+
 ## The backend seam
 
 A backend gets the decoder, the audio output and the audio input, and three hooks (state, news,

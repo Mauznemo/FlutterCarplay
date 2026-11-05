@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import 'dart:io';
+
+import 'package:carplay/carplay.dart';
 import 'package:flutter/material.dart';
 
 import 'head_unit_page.dart';
 
 void main() {
+  // macOS and Windows get the simulator without asking. This puts it on Linux too, for
+  // working on the app with no adapter to hand. An example app knob, not a plugin one.
+  if (Platform.environment['CP_SIMULATE'] == '1') {
+    CarPlaySimulator.registerWith();
+  }
   runApp(const HeadUnitApp());
 }
 
