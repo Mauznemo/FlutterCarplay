@@ -1,5 +1,5 @@
 name: carplay_native
-description: "Linux implementation of the carplay plugin. Drives a Carlinkit CarPlay adapter over USB and renders the iPhone's screen into a Flutter texture."
+description: "Linux and Android implementation of the carplay plugin. Drives a Carlinkit CarPlay adapter over USB and renders the iPhone's screen into a Flutter texture."
 version: 0.0.1
 repository: https://github.com/Mauznemo/FlutterCarplay
 license: GPL-3.0-or-later
@@ -31,5 +31,11 @@ flutter:
       # pluginClass as well as dartPluginClass: the GTK entry point is the only way to
       # get the FlTextureRegistrar, see linux/carplay_native_plugin.cc.
       linux:
+        pluginClass: CarplayNativePlugin
+        dartPluginClass: CarPlayNative
+      # The same native core and the same Dart class. The Java plugin class only loads
+      # the library, hands out Flutter textures and the adapter, see android/.
+      android:
+        package: io.github.mauznemo.carplay
         pluginClass: CarplayNativePlugin
         dartPluginClass: CarPlayNative

@@ -1,0 +1,3 @@
+[submodule "packages/carplay_native/third_party/libusb"]
+	path = packages/carplay_native/third_party/libusb
+	url = https://github.com/libusb/libusb.git

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import 'dart:async';
-import 'dart:io';
 
 import 'package:carplay/carplay.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +10,7 @@ import 'config.dart';
 import 'head_unit/metadata_overlay.dart';
 import 'head_unit/projection_placeholder.dart';
 import 'head_unit/status_bar.dart';
+import 'knobs.dart';
 
 /// The whole head unit: the projection, and Flutter drawn over it.
 ///
@@ -55,10 +55,10 @@ class _HeadUnitPageState extends State<HeadUnitPage> {
       (present) => debugPrint('[Bench] adapter on USB: $present'),
     );
     // Example app knobs, not plugin ones, for runs driven from a script.
-    if (Platform.environment['CP_AUTOSTART'] == '1') {
+    if (Knobs.autostart) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _controller.start());
     }
-    if (Platform.environment['CP_TEST_PATTERN'] == '1') {
+    if (Knobs.testPattern) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _togglePattern());
     }
   }
@@ -91,59 +91,63 @@ class _HeadUnitPageState extends State<HeadUnitPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Column(
-        children: [
-          StatusBar(controller: _controller, lastInput: _lastInput),
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: CarPlayView(
-                    controller: _controller,
-                    placeholder: ProjectionPlaceholder(controller: _controller),
-                  ),
-                ),
-                Positioned(
-                  left: 12,
-                  bottom: 12,
-                  child: MetadataOverlay(controller: _controller),
-                ),
-                if (_controller.config.cluster != null)
-                  Positioned(
-                    right: 12,
-                    top: 12,
-                    width: 400,
-                    height: 120,
-                    child: CarPlayClusterView(controller: _controller),
-                  ),
-                if (_adapterPanelOpen)
-                  Positioned(
-                    right: 12,
-                    top: 12,
-                    bottom: 12,
-                    child: AdapterPanel(controller: _controller),
-                  ),
-                if (_hostUiShown)
+      // Clear of a phone's status and navigation bars, which a head unit screen has none
+      // of, but the Android test device does.
+      body: SafeArea(
+        child: Column(
+          children: [
+            StatusBar(controller: _controller, lastInput: _lastInput),
+            Expanded(
+              child: Stack(
+                children: [
                   Positioned.fill(
-                    child: _HostUiCard(
-                      onBack: () => setState(() => _hostUiShown = false),
+                    child: CarPlayView(
+                      controller: _controller,
+                      placeholder: ProjectionPlaceholder(controller: _controller),
                     ),
                   ),
-              ],
+                  Positioned(
+                    left: 12,
+                    bottom: 12,
+                    child: MetadataOverlay(controller: _controller),
+                  ),
+                  if (_controller.config.cluster != null)
+                    Positioned(
+                      right: 12,
+                      top: 12,
+                      width: 400,
+                      height: 120,
+                      child: CarPlayClusterView(controller: _controller),
+                    ),
+                  if (_adapterPanelOpen)
+                    Positioned(
+                      right: 12,
+                      top: 12,
+                      bottom: 12,
+                      child: AdapterPanel(controller: _controller),
+                    ),
+                  if (_hostUiShown)
+                    Positioned.fill(
+                      child: _HostUiCard(
+                        onBack: () => setState(() => _hostUiShown = false),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          Dock(
-            controller: _controller,
-            patternRunning: _patternRunning,
-            adapterPanelOpen: _adapterPanelOpen,
-            onStart: _controller.start,
-            onStop: _controller.stop,
-            onTogglePattern: _togglePattern,
-            onToggleAdapterPanel: () =>
-                setState(() => _adapterPanelOpen = !_adapterPanelOpen),
-            onInput: (input) => setState(() => _lastInput = input),
-          ),
-        ],
+            Dock(
+              controller: _controller,
+              patternRunning: _patternRunning,
+              adapterPanelOpen: _adapterPanelOpen,
+              onStart: _controller.start,
+              onStop: _controller.stop,
+              onTogglePattern: _togglePattern,
+              onToggleAdapterPanel: () =>
+                  setState(() => _adapterPanelOpen = !_adapterPanelOpen),
+              onInput: (input) => setState(() => _lastInput = input),
+            ),
+          ],
+        ),
       ),
     );
   }

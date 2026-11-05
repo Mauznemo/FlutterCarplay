@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Carlinkit adapter, 1314:1520 or 1314:1521 (the product id is a firmware
+     setting), in decimal as Android wants it. -->
+<resources>
+    <usb-device vendor-id="4884" product-id="5408" />
+    <usb-device vendor-id="4884" product-id="5409" />
+</resources>

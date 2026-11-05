@@ -261,11 +261,19 @@ class CarPlaySimulator extends CarPlayPlatform {
   @override
   void setViewSize(double width, double height) {
     _view = Size(width, height);
-    if (!_streaming || !_config.followViewResize) {
+    if (!_config.followViewResize) {
       return;
     }
     final frame = _frameFor(_view);
     if (frame == _frame) {
+      return;
+    }
+    // Not projecting yet: the pretend phone has not been asked for a size, so the new
+    // one simply applies, as the real head unit's next Open would.
+    if (!_streaming) {
+      if (_frame != null) {
+        _frame = frame;
+      }
       return;
     }
     // As the real head unit: wait for the view to hold still, then the phone

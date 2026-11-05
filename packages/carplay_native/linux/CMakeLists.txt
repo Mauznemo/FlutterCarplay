@@ -45,6 +45,7 @@ list(APPEND PLUGIN_SOURCES
   "${CP_SRC}/dongle/nmea.cc"
   "${CP_SRC}/dongle/protocol.cc"
   "${CP_SRC}/dongle/stream_parser.cc"
+  "${CP_SRC}/dongle/usb_device_source.cc"
   "${CP_SRC}/dongle/usb_link.cc"
   "${CP_SRC}/metadata/json.cc"
   "${CP_SRC}/present/gl_adapter.cc"

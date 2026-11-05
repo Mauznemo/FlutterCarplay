@@ -33,7 +33,7 @@ backend later; `docs/research.md` says why.
 | M11 | Packaging, CI, ARM64, release | in progress |
 | M12 | Simulator for macOS and Windows | **done**, bar running it on a Mac or Windows machine |
 | M13 | Native CarPlay backend | not started |
-| M14 | Android as the head unit | not started |
+| M14 | Android as the head unit | **in progress**, builds and runs on the test device, bar a real adapter |
 
 ---
 
@@ -189,5 +189,10 @@ chip only for the authentication signature. See `docs/research.md`.
 android_auto's Android port is one file per seam (`mediacodec_decoder`, `gl_adapter_android`,
 `aaudio_sink`, `aaudio_source`, USB from Java through `UsbManager`). The same files apply here.
 
-- [ ] Copy the Android seams, a Java plugin that hands the adapter over as a file descriptor
+- [x] Copy the Android seams (`mediacodec_decoder`, `gl_adapter_android`, `aaudio_sink`, `aaudio_source`, `platform/android_jni`), with the keyframe hook added to the MediaCodec decoder and the AAudio usages mapped to media, voice and navigation
+- [x] `CarplayNativePlugin.java`: texture surfaces, and USB watching for 1314:1520/1521 with the permission dialog, handing the adapter over as a file descriptor
+- [x] The USB device source as a seam (`dongle/usb_device_source*.cc`): libusb lists the bus on Linux, wraps the descriptor on Android. libusb 1.0.29 is a submodule compiled into the Android build, no prebuilt dependencies
+- [x] Verified on the test device (Galaxy M21, LineageOS 20, Android 13): the APK builds for arm64, installs and starts; the test pattern renders through the SurfaceProducer; Start reports "No Carlinkit adapter on USB." from the Java side and keeps looking; the simulator projects and an `adb` tap on the touchscreen opens Maps through the view's touch mapping
+- [x] Found on the device and fixed for both platforms: a start made before the view's first layout asked for a frame the size of the window. The controller now gives the view 300 ms to report its own size first
 - [ ] Project through a CCPA on an Android head unit
+- [ ] armeabi-v7a and x86_64 builds (configured, not yet built)

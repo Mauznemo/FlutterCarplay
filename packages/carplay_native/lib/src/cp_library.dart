@@ -7,8 +7,10 @@ import 'bindings/cp_core_bindings.dart';
 /// Loads the native head unit core and exposes its bindings.
 ///
 /// On Linux the core lives inside `libcarplay_native_plugin.so`, the same shared object
-/// Flutter already loaded to run the plugin's GTK registration, so opening it again by
-/// name is cheap: `dlopen` returns a handle to the copy that is already mapped.
+/// Flutter already loaded to run the plugin's GTK registration. On Android it is
+/// `libcarplay_native.so`, which the plugin's Java class loaded when the engine attached.
+/// Either way opening it again by name is cheap: `dlopen` returns a handle to the copy
+/// that is already mapped.
 class CpLibrary {
   CpLibrary._(this.bindings);
 
@@ -19,15 +21,17 @@ class CpLibrary {
 
   /// The process wide instance, loaded on first use.
   ///
-  /// Throws [UnsupportedError] off Linux, and [CpLibraryLoadException] if the shared
+  /// Throws [UnsupportedError] off Linux and Android, and [CpLibraryLoadException] if the shared
   /// object cannot be found, which in practice means the plugin was not bundled.
   static CpLibrary get instance => _instance ??= CpLibrary._(CpCoreBindings(_open()));
 
   static DynamicLibrary _open() {
-    if (!Platform.isLinux) {
-      throw UnsupportedError('carplay_native only supports Linux.');
+    if (!Platform.isLinux && !Platform.isAndroid) {
+      throw UnsupportedError('carplay_native only supports Linux and Android.');
     }
-    const name = 'libcarplay_native_plugin.so';
+    final name = Platform.isAndroid
+        ? 'libcarplay_native.so'
+        : 'libcarplay_native_plugin.so';
     try {
       return DynamicLibrary.open(name);
     } on ArgumentError catch (error) {

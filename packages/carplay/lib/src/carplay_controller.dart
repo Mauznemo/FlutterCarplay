@@ -306,20 +306,28 @@ class CarPlayController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The window's size in physical pixels, once it has one, or null if it still has
-  /// none after a second. Returns early if a view reports its own size meanwhile.
+  /// The window's size in physical pixels, or null if a view reports its own size
+  /// first, which is the better answer.
+  ///
+  /// A view gets a moment to be laid out before the window stands in for it: on Android
+  /// the first frame has no size at all, so a start made from it found the window ready
+  /// and the view not, and asked for a frame the size of the whole screen. Seen on the
+  /// test device, 2130x1080 for a view a third smaller. Up to a second for a window that
+  /// has no size yet either.
   Future<Size?> _windowSize() async {
+    const viewGrace = 300;
     for (var waited = 0; waited < 1000; waited += 20) {
-      final window = PlatformDispatcher.instance.implicitView?.physicalSize;
-      if (window != null && !window.isEmpty) {
-        return window;
-      }
       if (_viewSize != null) {
         return null;
       }
+      final window = PlatformDispatcher.instance.implicitView?.physicalSize;
+      if (waited >= viewGrace && window != null && !window.isEmpty) {
+        return window;
+      }
       await Future<void>.delayed(const Duration(milliseconds: 20));
     }
-    return null;
+    final window = PlatformDispatcher.instance.implicitView?.physicalSize;
+    return _viewSize == null && window != null && !window.isEmpty ? window : null;
   }
 
   Future<void> _refreshVideoState() async {

@@ -10,7 +10,8 @@ A Flutter plugin that runs an Apple CarPlay head unit inside a Flutter app, rend
 projected iPhone screen into a Flutter `Texture` so the host app can draw widgets on top. The
 sibling of FlutterAndroidAuto (`../FlutterAndroidAuto` on the author's machine,
 github.com/Mauznemo/FlutterAndroidAuto), deliberately the same shape, and the source of most of
-the native pipeline here. Linux first; Android later.
+the native pipeline here. Linux first, Android second, from one native package: see "Android"
+below.
 
 CarPlay comes from a **Carlinkit CPC200-CCPA adapter** over USB: the adapter is the CarPlay
 receiver and hands the host H.264 and PCM. A **native CarPlay backend** (iAP2 and AirPlay on the
@@ -126,7 +127,10 @@ read CONTRIBUTING.md before writing either. The repository is private on GitHub,
 | `src/log.*` | `CP_LOG(info) << ...`, replacing the aasdk logger the copied files used |
 | `src/dongle/protocol.*` | every byte offset of the adapter protocol, **no state, no libusb**, the one thing unit tested |
 | `src/dongle/stream_parser.*` | messages back out of fixed size reads |
-| `src/dongle/usb_link.*` | **the only files that name libusb**: the process wide context and its event thread, claim, reads always in flight, the writer thread |
+| `src/dongle/usb_link.*` | libusb: the process wide context and its event thread, claim, reads always in flight, the writer thread |
+| `src/dongle/usb_device_source*.cc` | where the adapter comes from: libusb's device list on Linux, a descriptor from Java on Android, behind `usb_device_source.h` |
+| `src/platform/android_jni.*` | **the only files that name a JNI type**: `JNI_OnLoad`, the Surface and USB calls into `CarplayNativePlugin.java`, stdout to logcat |
+| `android/CMakeLists.txt` | the Android build of the same tree, which source replaces which Linux one is listed at its top, and libusb from the submodule |
 | `src/dongle/dongle_session.*` | the adapter backend: discovery, start up sequence, heartbeat, timers, dispatch to the shared pipeline |
 | `src/frame_ring.*`, `src/present/*`, `src/video/*`, `src/audio/*`, `src/event_bus.*`, `src/metadata/json.*`, `src/test_pattern.*` | **copied from android_auto** and renamed, see below |
 | `linux/carplay_native_plugin.map` | the linker version script: `cp_*` and the GTK registrar exported, nothing else |
@@ -171,6 +175,40 @@ same rules as android_auto's simulator:
   `setUp` (events scheduled from outside the fake zone are never delivered by `pump()`), drive
   the zero delays with `pump`, never `runAsync`, and never `await` a stream subscription's
   `cancel()`: in fake time it completes on a timer nothing pumps, and the test hangs silently.
+
+## Android
+
+The Android device is the head unit, the same as android_auto's Android port, and the same
+shape: `carplay_native` declares `android` beside `linux`, builds the same `src/` tree with the
+NDK into `libcarplay_native.so`, and runs the same `CarPlayNative` Dart class over the same C
+ABI. One file per seam, listed at the top of `android/CMakeLists.txt`; a new Android backend is
+a new `.cc`, not an `#ifdef` in shared code.
+
+```bash
+cd example && flutter build apk --debug --target-platform android-arm64
+flutter run -d R58N91XQV6V --dart-define=CP_SIMULATE=1 --dart-define=CP_AUTOSTART=1
+```
+
+- **The only native dependency is libusb**, a submodule at
+  `packages/carplay_native/third_party/libusb` (v1.0.29), compiled straight into the Android
+  build from the source list in its own `android/jni/libusb.mk`. No prebuilt deps directory, so
+  `git submodule update --init` is the whole setup. Linux uses the system libusb.
+- **USB starts in Java.** `CarplayNativePlugin.java` watches `UsbManager` for 1314:1520/1521,
+  asks for permission, and hands the adapter over as a file descriptor, which
+  `usb_device_source_android.cc` wraps with `libusb_wrap_sys_device`. Java owns the descriptor
+  until `CloseAdapter` releases it; never close one under libusb. An adapter still attached
+  after a session ended is not announced again, so opening asks Java to rescan.
+- **Android needs API 28**, and a host app asks for `RECORD_AUDIO` itself.
+- **The example's knobs are `--dart-define`s on Android**, since an app has no environment:
+  `example/lib/knobs.dart` reads both.
+- **The test device is a Galaxy M21** (LineageOS 20, Android 13, adb serial `R58N91XQV6V`), a
+  phone standing in for a head unit; the author connects it when asked. `adb exec-out
+  screencap -p` for screenshots, `adb shell input tap x y` for touch, `adb logcat -s CarPlay`
+  for the native log. Its first Flutter frame has no size, which is what the controller's view
+  grace period in `_windowSize` is for.
+- Everything in android_auto's `AGENTS.md` about the present adapter on Android holds here:
+  nothing may wait for Flutter's thread from the render thread, and a surface can be taken away
+  at any moment.
 
 ## The backend seam
 

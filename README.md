@@ -10,7 +10,7 @@ second process.
 The sibling of [Flutter Android Auto](https://github.com/Mauznemo/FlutterAndroidAuto), with the
 same shape of API, so one infotainment system can carry both.
 
-> **Status: in development, nothing has projected yet.** CarPlay comes from a Carlinkit
+> **Status: in development, nothing has projected yet.** Linux and Android. CarPlay comes from a Carlinkit
 > CPC200-CCPA adapter over USB. The plugin is written against the adapter's protocol from public
 > documentation, its byte layer is unit tested, and the video, audio and texture pipeline is the
 > one android_auto ships. The first real adapter has not arrived yet. See [`PLAN.md`](PLAN.md)

@@ -1,0 +1,11 @@
+# What libcarplay_native.so exports on Android: the C ABI Dart binds to, the JNI entry
+# point, and the native methods the Java plugin declares. Everything else stays local,
+# for the reason given in linux/carplay_native_plugin.map.
+{
+  global:
+    cp_*;
+    JNI_OnLoad;
+    Java_*;
+  local:
+    *;
+};

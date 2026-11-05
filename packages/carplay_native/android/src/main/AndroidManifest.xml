@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Siri and calls listen through the head unit's microphone, the only one a
+       CPC200-CCPA has. The host app asks for it at runtime; without it the phone gets
+       silence. -->
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+  <!-- The adapter is a USB device, so the head unit has to be the host. Not required,
+       so the app still installs where the simulator or a test is all that runs. -->
+  <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+</manifest>
