@@ -1,0 +1,25 @@
+name: carplay_example
+description: "Reference integration and test bench for the carplay plugin. Runs a head unit through a Carlinkit adapter and draws Flutter UI on top of it."
+publish_to: 'none'
+version: 0.0.1+1
+
+# Resolved as part of the workspace rooted at the repository root, so `flutter pub get`
+# there covers this package too.
+resolution: workspace
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  carplay:
+    path: ../packages/carplay
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

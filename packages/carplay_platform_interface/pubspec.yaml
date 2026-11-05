@@ -1,0 +1,23 @@
+name: carplay_platform_interface
+description: "Common platform interface for the carplay plugin. Defines the contract every platform implementation has to fulfil."
+version: 0.0.1
+repository: https://github.com/Mauznemo/FlutterCarplay
+license: GPL-3.0-or-later
+# Not published until something has projected through it. See PLAN.md.
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.13.3
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  plugin_platform_interface: ^2.1.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

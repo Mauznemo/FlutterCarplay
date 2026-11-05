@@ -1,0 +1,17 @@
+# What libcarplay_native_plugin.so exports, and nothing else.
+#
+# A Flutter application loads every plugin into one address space, and the first
+# definition of a symbol wins for all of them, so a plugin that exports its internals
+# can silently bind another plugin to its copies. Two things are public, and both are
+# entry points somebody outside calls:
+#
+#   cp_*    the flat C ABI in src/cp_core.h, which Dart resolves with dlsym
+#   carplay_native_plugin_register_with_registrar
+#           the GTK entry point Flutter calls to hand over the FlTextureRegistrar
+{
+  global:
+    cp_*;
+    carplay_native_plugin_register_with_registrar;
+  local:
+    *;
+};
