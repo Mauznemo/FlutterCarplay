@@ -149,6 +149,11 @@ class DongleSession {
   // Applies at once to a connected phone, and to every later one.
   void SetNightMode(bool night);
 
+  // Asks for a new frame size. Applied once no new size has been asked for in
+  // kResizeSettleUs, by configuring the adapter again from Open, which drops a connected
+  // phone and lets it reconnect into the new size. A wired iPhone is back within seconds.
+  void RequestFrameSize(int32_t width, int32_t height);
+
   // Asks the phone for a keyframe, at most twice a second. CarPlay sends one when a
   // stream starts and then none for minutes, so this is what recovers a decoder that
   // lost its place. Ignored while no CarPlay phone is connected.
@@ -243,6 +248,10 @@ class DongleSession {
   int64_t auto_connect_due_us_ = 0;
   int64_t pair_due_us_ = 0;
   int64_t next_keyframe_watch_us_ = 0;
+  // Written under mutex_ by RequestFrameSize, read by the control thread.
+  int64_t resize_due_us_ = 0;
+  int32_t resize_width_ = 0;
+  int32_t resize_height_ = 0;
   std::string last_open_error_;
 
   // What the adapter said about itself. Written on the event thread, read anywhere.

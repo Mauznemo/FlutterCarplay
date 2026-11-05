@@ -15,12 +15,10 @@ import 'dart:ffi' as ffi;
 ///
 class CpCoreBindings {
   /// Holds the symbol lookup function.
-  final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
-  _lookup;
+  final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName) _lookup;
 
   /// The symbols are looked up in [dynamicLibrary].
-  CpCoreBindings(ffi.DynamicLibrary dynamicLibrary)
-    : _lookup = dynamicLibrary.lookup;
+  CpCoreBindings(ffi.DynamicLibrary dynamicLibrary) : _lookup = dynamicLibrary.lookup;
 
   /// The symbols are looked up with [lookup].
   CpCoreBindings.fromLookup(
@@ -56,9 +54,7 @@ class CpCoreBindings {
   }
 
   late final _cp_audio_devicesPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
-        'cp_audio_devices',
-      );
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('cp_audio_devices');
   late final _cp_audio_devices = _cp_audio_devicesPtr
       .asFunction<ffi.Pointer<ffi.Char> Function()>();
 
@@ -79,10 +75,10 @@ class CpCoreBindings {
     return _cp_adapter_present();
   }
 
-  late final _cp_adapter_presentPtr =
-      _lookup<ffi.NativeFunction<ffi.Int32 Function()>>('cp_adapter_present');
-  late final _cp_adapter_present = _cp_adapter_presentPtr
-      .asFunction<int Function()>();
+  late final _cp_adapter_presentPtr = _lookup<ffi.NativeFunction<ffi.Int32 Function()>>(
+    'cp_adapter_present',
+  );
+  late final _cp_adapter_present = _cp_adapter_presentPtr.asFunction<int Function()>();
 
   ffi.Pointer<CpSession> cp_session_create(
     ffi.Pointer<CpConfig> config,
@@ -94,10 +90,7 @@ class CpCoreBindings {
   late final _cp_session_createPtr =
       _lookup<
         ffi.NativeFunction<
-          ffi.Pointer<CpSession> Function(
-            ffi.Pointer<CpConfig>,
-            CpEventCallback,
-          )
+          ffi.Pointer<CpSession> Function(ffi.Pointer<CpConfig>, CpEventCallback)
         >
       >('cp_session_create');
   late final _cp_session_create = _cp_session_createPtr
@@ -190,25 +183,21 @@ class CpCoreBindings {
       .asFunction<int Function(ffi.Pointer<CpSession>)>();
 
   /// "VA-API", "software" or "none". Free with cp_string_free.
-  ffi.Pointer<ffi.Char> cp_session_video_backend(
-    ffi.Pointer<CpSession> session,
-  ) {
+  ffi.Pointer<ffi.Char> cp_session_video_backend(ffi.Pointer<CpSession> session) {
     return _cp_session_video_backend(session);
   }
 
   late final _cp_session_video_backendPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)
-        >
-      >('cp_session_video_backend');
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_video_backend',
+      );
   late final _cp_session_video_backend = _cp_session_video_backendPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>();
 
   /// The view's size in physical pixels. With no width and height in the config, the
-  /// frame the phone is asked for is this, rounded to even and capped, read when the
-  /// adapter is configured. A view that changes size afterwards is stretched until the
-  /// next start.
+  /// frame the phone is asked for is this, rounded to even and capped (frame_size.h). A
+  /// view that changes size while running gets a new frame once it has held still for a
+  /// second, which reconnects the phone, unless follow_view_resize is 0.
   void cp_session_set_view_size(
     ffi.Pointer<CpSession> session,
     double width,
@@ -270,13 +259,7 @@ class CpCoreBindings {
       >('cp_session_send_touch');
   late final _cp_session_send_touch = _cp_session_send_touchPtr
       .asFunction<
-        int Function(
-          ffi.Pointer<CpSession>,
-          int,
-          int,
-          ffi.Pointer<CpTouchPoint>,
-          int,
-        )
+        int Function(ffi.Pointer<CpSession>, int, int, ffi.Pointer<CpTouchPoint>, int)
       >();
 
   /// One Command id to the adapter: keys, Siri, media control. See CarPlayKey in Dart for
@@ -286,11 +269,9 @@ class CpCoreBindings {
   }
 
   late final _cp_session_send_commandPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Int32 Function(ffi.Pointer<CpSession>, ffi.Int32)
-        >
-      >('cp_session_send_command');
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>, ffi.Int32)>>(
+        'cp_session_send_command',
+      );
   late final _cp_session_send_command = _cp_session_send_commandPtr
       .asFunction<int Function(ffi.Pointer<CpSession>, int)>();
 
@@ -310,11 +291,9 @@ class CpCoreBindings {
   }
 
   late final _cp_session_set_night_modePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Int32 Function(ffi.Pointer<CpSession>, ffi.Int32)
-        >
-      >('cp_session_set_night_mode');
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>, ffi.Int32)>>(
+        'cp_session_set_night_mode',
+      );
   late final _cp_session_set_night_mode = _cp_session_set_night_modePtr
       .asFunction<int Function(ffi.Pointer<CpSession>, int)>();
 
@@ -340,19 +319,13 @@ class CpCoreBindings {
   }
 
   late final _cp_session_audio_volumePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Double Function(ffi.Pointer<CpSession>, ffi.Int32)
-        >
-      >('cp_session_audio_volume');
+      _lookup<ffi.NativeFunction<ffi.Double Function(ffi.Pointer<CpSession>, ffi.Int32)>>(
+        'cp_session_audio_volume',
+      );
   late final _cp_session_audio_volume = _cp_session_audio_volumePtr
       .asFunction<double Function(ffi.Pointer<CpSession>, int)>();
 
-  int cp_session_set_audio_muted(
-    ffi.Pointer<CpSession> session,
-    int stream,
-    int muted,
-  ) {
+  int cp_session_set_audio_muted(ffi.Pointer<CpSession> session, int stream, int muted) {
     return _cp_session_set_audio_muted(session, stream, muted);
   }
 
@@ -370,11 +343,9 @@ class CpCoreBindings {
   }
 
   late final _cp_session_audio_mutedPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Int32 Function(ffi.Pointer<CpSession>, ffi.Int32)
-        >
-      >('cp_session_audio_muted');
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>, ffi.Int32)>>(
+        'cp_session_audio_muted',
+      );
   late final _cp_session_audio_muted = _cp_session_audio_mutedPtr
       .asFunction<int Function(ffi.Pointer<CpSession>, int)>();
 
@@ -393,38 +364,27 @@ class CpCoreBindings {
         >
       >('cp_session_set_audio_device');
   late final _cp_session_set_audio_device = _cp_session_set_audio_devicePtr
-      .asFunction<
-        int Function(ffi.Pointer<CpSession>, ffi.Pointer<ffi.Char>)
-      >();
+      .asFunction<int Function(ffi.Pointer<CpSession>, ffi.Pointer<ffi.Char>)>();
 
-  ffi.Pointer<ffi.Char> cp_session_audio_device(
-    ffi.Pointer<CpSession> session,
-  ) {
+  ffi.Pointer<ffi.Char> cp_session_audio_device(ffi.Pointer<CpSession> session) {
     return _cp_session_audio_device(session);
   }
 
   late final _cp_session_audio_devicePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)
-        >
-      >('cp_session_audio_device');
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_audio_device',
+      );
   late final _cp_session_audio_device = _cp_session_audio_devicePtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>();
 
-  int cp_session_set_audio_output_enabled(
-    ffi.Pointer<CpSession> session,
-    int enabled,
-  ) {
+  int cp_session_set_audio_output_enabled(ffi.Pointer<CpSession> session, int enabled) {
     return _cp_session_set_audio_output_enabled(session, enabled);
   }
 
   late final _cp_session_set_audio_output_enabledPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Int32 Function(ffi.Pointer<CpSession>, ffi.Int32)
-        >
-      >('cp_session_set_audio_output_enabled');
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>, ffi.Int32)>>(
+        'cp_session_set_audio_output_enabled',
+      );
   late final _cp_session_set_audio_output_enabled =
       _cp_session_set_audio_output_enabledPtr
           .asFunction<int Function(ffi.Pointer<CpSession>, int)>();
@@ -437,9 +397,8 @@ class CpCoreBindings {
       _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>)>>(
         'cp_session_audio_output_enabled',
       );
-  late final _cp_session_audio_output_enabled =
-      _cp_session_audio_output_enabledPtr
-          .asFunction<int Function(ffi.Pointer<CpSession>)>();
+  late final _cp_session_audio_output_enabled = _cp_session_audio_output_enabledPtr
+      .asFunction<int Function(ffi.Pointer<CpSession>)>();
 
   /// NULL to stop. The tap runs on the audio writer threads.
   int cp_session_set_audio_callback(
@@ -451,25 +410,19 @@ class CpCoreBindings {
 
   late final _cp_session_set_audio_callbackPtr =
       _lookup<
-        ffi.NativeFunction<
-          ffi.Int32 Function(ffi.Pointer<CpSession>, CpAudioCallback)
-        >
+        ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>, CpAudioCallback)>
       >('cp_session_set_audio_callback');
   late final _cp_session_set_audio_callback = _cp_session_set_audio_callbackPtr
       .asFunction<int Function(ffi.Pointer<CpSession>, CpAudioCallback)>();
 
-  ffi.Pointer<ffi.Char> cp_session_audio_backend(
-    ffi.Pointer<CpSession> session,
-  ) {
+  ffi.Pointer<ffi.Char> cp_session_audio_backend(ffi.Pointer<CpSession> session) {
     return _cp_session_audio_backend(session);
   }
 
   late final _cp_session_audio_backendPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)
-        >
-      >('cp_session_audio_backend');
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_audio_backend',
+      );
   late final _cp_session_audio_backend = _cp_session_audio_backendPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>();
 
@@ -478,11 +431,9 @@ class CpCoreBindings {
   }
 
   late final _cp_session_audio_underrunsPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Int64 Function(ffi.Pointer<CpSession>, ffi.Int32)
-        >
-      >('cp_session_audio_underruns');
+      _lookup<ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<CpSession>, ffi.Int32)>>(
+        'cp_session_audio_underruns',
+      );
   late final _cp_session_audio_underruns = _cp_session_audio_underrunsPtr
       .asFunction<int Function(ffi.Pointer<CpSession>, int)>();
 
@@ -491,11 +442,9 @@ class CpCoreBindings {
   }
 
   late final _cp_session_audio_droppedPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Int64 Function(ffi.Pointer<CpSession>, ffi.Int32)
-        >
-      >('cp_session_audio_dropped');
+      _lookup<ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<CpSession>, ffi.Int32)>>(
+        'cp_session_audio_dropped',
+      );
   late final _cp_session_audio_dropped = _cp_session_audio_droppedPtr
       .asFunction<int Function(ffi.Pointer<CpSession>, int)>();
 
@@ -505,11 +454,9 @@ class CpCoreBindings {
   }
 
   late final _cp_session_audio_latencyPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Int64 Function(ffi.Pointer<CpSession>, ffi.Int32)
-        >
-      >('cp_session_audio_latency');
+      _lookup<ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<CpSession>, ffi.Int32)>>(
+        'cp_session_audio_latency',
+      );
   late final _cp_session_audio_latency = _cp_session_audio_latencyPtr
       .asFunction<int Function(ffi.Pointer<CpSession>, int)>();
 
@@ -561,39 +508,28 @@ class CpCoreBindings {
           ffi.Int32 Function(ffi.Pointer<CpSession>, ffi.Pointer<ffi.Char>)
         >
       >('cp_session_set_microphone_device');
-  late final _cp_session_set_microphone_device =
-      _cp_session_set_microphone_devicePtr
-          .asFunction<
-            int Function(ffi.Pointer<CpSession>, ffi.Pointer<ffi.Char>)
-          >();
+  late final _cp_session_set_microphone_device = _cp_session_set_microphone_devicePtr
+      .asFunction<int Function(ffi.Pointer<CpSession>, ffi.Pointer<ffi.Char>)>();
 
-  ffi.Pointer<ffi.Char> cp_session_microphone_device(
-    ffi.Pointer<CpSession> session,
-  ) {
+  ffi.Pointer<ffi.Char> cp_session_microphone_device(ffi.Pointer<CpSession> session) {
     return _cp_session_microphone_device(session);
   }
 
   late final _cp_session_microphone_devicePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)
-        >
-      >('cp_session_microphone_device');
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_microphone_device',
+      );
   late final _cp_session_microphone_device = _cp_session_microphone_devicePtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>();
 
-  ffi.Pointer<ffi.Char> cp_session_microphone_backend(
-    ffi.Pointer<CpSession> session,
-  ) {
+  ffi.Pointer<ffi.Char> cp_session_microphone_backend(ffi.Pointer<CpSession> session) {
     return _cp_session_microphone_backend(session);
   }
 
   late final _cp_session_microphone_backendPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)
-        >
-      >('cp_session_microphone_backend');
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_microphone_backend',
+      );
   late final _cp_session_microphone_backend = _cp_session_microphone_backendPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>();
 
@@ -607,29 +543,20 @@ class CpCoreBindings {
 
   late final _cp_session_set_metadata_callbackPtr =
       _lookup<
-        ffi.NativeFunction<
-          ffi.Int32 Function(ffi.Pointer<CpSession>, CpMetadataCallback)
-        >
+        ffi.NativeFunction<ffi.Int32 Function(ffi.Pointer<CpSession>, CpMetadataCallback)>
       >('cp_session_set_metadata_callback');
-  late final _cp_session_set_metadata_callback =
-      _cp_session_set_metadata_callbackPtr
-          .asFunction<
-            int Function(ffi.Pointer<CpSession>, CpMetadataCallback)
-          >();
+  late final _cp_session_set_metadata_callback = _cp_session_set_metadata_callbackPtr
+      .asFunction<int Function(ffi.Pointer<CpSession>, CpMetadataCallback)>();
 
   /// The CP_METADATA_ADAPTER JSON as it stands. Free with cp_string_free.
-  ffi.Pointer<ffi.Char> cp_session_adapter_info(
-    ffi.Pointer<CpSession> session,
-  ) {
+  ffi.Pointer<ffi.Char> cp_session_adapter_info(ffi.Pointer<CpSession> session) {
     return _cp_session_adapter_info(session);
   }
 
   late final _cp_session_adapter_infoPtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)
-        >
-      >('cp_session_adapter_info');
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>>(
+        'cp_session_adapter_info',
+      );
   late final _cp_session_adapter_info = _cp_session_adapter_infoPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<CpSession>)>();
 
@@ -880,6 +807,13 @@ final class CpConfig extends ffi.Struct {
   external int oem_icon_png_size;
 
   external ffi.Pointer<ffi.Char> oem_icon_label;
+
+  /// Whether a view that changes size while running gets a frame of its new size. It
+  /// takes a new Open, which disconnects the phone for a few seconds, so a host app that
+  /// resizes often may prefer the old frame fitted into the new view. -1 for the default
+  /// (yes).
+  @ffi.Int32()
+  external int follow_view_resize;
 }
 
 /// State changes and news. `message` may be NULL; otherwise it is heap allocated and
@@ -909,7 +843,5 @@ typedef CpAudioCallback =
 /// One metadata update. `json` is owned by the receiver, freed with cp_string_free.
 typedef CpMetadataCallback =
     ffi.Pointer<
-      ffi.NativeFunction<
-        ffi.Void Function(ffi.Int32 kind, ffi.Pointer<ffi.Char> json)
-      >
+      ffi.NativeFunction<ffi.Void Function(ffi.Int32 kind, ffi.Pointer<ffi.Char> json)>
     >;

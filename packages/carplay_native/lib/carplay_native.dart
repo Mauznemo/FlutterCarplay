@@ -164,7 +164,8 @@ class CarPlayNative extends CarPlayPlatform {
         ..dashboard_info = config.navigationMetadata ? 7 : 3
         ..oem_icon_png = iconBytes
         ..oem_icon_png_size = icon?.length ?? 0
-        ..oem_icon_label = label.cast();
+        ..oem_icon_label = label.cast()
+        ..follow_view_resize = config.followViewResize ? 1 : 0;
       _nightMode ??= config.nightMode;
 
       _session = _bindings.cp_session_create(native, _eventCallback!.nativeFunction);

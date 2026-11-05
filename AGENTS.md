@@ -208,6 +208,10 @@ microphone, and unplug and replug timing (`setup -- --help`). Log in `/tmp/cp-fa
   A pass against it proves the plugin's own plumbing (libusb, the stream parser, the session,
   the decoder, the texture), never that a real CCPA agrees. Anything found on hardware that
   the fake does differently goes into the fake as well.
+- **`dev/scenarios.sh` is the regression suite for anything in `src/dongle/` or `cp_core.cc`.**
+  Run it before calling such a change done; every scenario must say PASS. A new recovery path
+  gets a scenario, and the fake a flag for the quirk it recovers from (`--sticky-session` and
+  `--phase13-once` are the pattern).
 - When exercising audio or the microphone, route the example to a null sink and source, so the
   author hears nothing and their real microphone is not opened.
 - Loading `dummy_hcd` taints the kernel until the next reboot. Harmless, but say so.
@@ -227,10 +231,13 @@ microphone, and unplug and replug timing (`setup -- --help`). Log in `/tmp/cp-fa
 ## Frame size
 
 CarPlay takes any size, so the frame is the view's own in physical pixels, rounded to even,
-within 2560x1440, settled at Start (`CpSession::ResolveFrameSize`). No margins, nothing cropped,
-unlike android_auto. Touch is measured against the decoded picture's size, because the phone's
-first frames can be a boot screen of another size. Following a resize live needs a new Open,
-which drops the phone; it is open in `PLAN.md`.
+within 2560x1440 (`src/frame_size.*`, unit tested), settled at Start. No margins, nothing
+cropped, unlike android_auto, whose `FrameSizeForView` was removed from the copied
+`video_margins.*` for that reason. Touch is measured against the decoded picture's size,
+because the phone's first frames can be a boot screen of another size. A resize while running
+needs a new Open, which drops the phone, so `DongleSession::RequestFrameSize` waits for the
+view to hold still for a second before reconfiguring; `CarPlayConfig.followViewResize` turns it
+off.
 
 ## Things this project does not do
 

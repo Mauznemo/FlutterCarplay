@@ -21,14 +21,14 @@ backend later; `docs/research.md` says why.
 | M0 | Project setup, research, decisions | **done** |
 | M1 | Shared pipeline from android_auto: texture, decoder, audio, events | **done** |
 | M2 | Adapter protocol layer, unit tested | **done** |
-| M3 | USB link and session, against a fake adapter | **done**, bar Stop then Start against it |
+| M3 | USB link and session, against a fake adapter | **done** |
 | M4 | First projection from a real CPC200-CCPA | blocked on the hardware |
 | M5 | Audio: media, voice, navigation, ducking | written, the pipeline verified against the fake adapter |
 | M6 | Microphone: Siri and calls | written, the pipeline verified against the fake adapter |
 | M7 | Input: touch, keys, Siri button, night mode | written, unverified |
 | M8 | Metadata: now playing, album art, navigation, calls | written, now playing and navigation verified against the fake adapter |
 | M9 | Wireless CarPlay through the adapter | written, unverified |
-| M10 | Robustness: replugs, restarts, firmware versions | not started |
+| M10 | Robustness: replugs, restarts, firmware versions | **in progress**, every case passing against the fake adapter, none yet on hardware |
 | M11 | Packaging, CI, ARM64, release | in progress |
 | M12 | Simulator for macOS and Windows | not started |
 | M13 | Native CarPlay backend | not started |
@@ -80,7 +80,8 @@ aasdk. Renamed to the `cp` namespace, aasdk's logger replaced by `src/log.h`.
 - [x] Against it: the start up sequence goes out in order, heartbeats every 2 s, the picture appears (1280x632, VA-API, 1.0 ms wire to frame), the overlays fill from metadata. Verified by screenshot
 - [x] Against it: the fake unplugging the phone ends the picture; replugging brings it back
 - [x] Against it: a USB unbind mid stream fails the link at once (fixed: a read that could not be resubmitted went unnoticed until the next write), and a rebind reconfigures it and the picture returns
-- [ ] Against it: Stop sends DisconnectPhone and CloseDongle, releases the interface, and Start works again
+- [x] Against it: Stop sends DisconnectPhone and CloseDongle, releases the interface, and Start works again (`example/integration_test/adapter_test.dart`)
+- [x] `dev/scenarios.sh` runs every case below against the fake and says PASS or FAIL for each: basic, phase13, sticky, unplug, all PASS on 2026-11-05
 
 ## M4. First projection from a real CPC200-CCPA
 
@@ -129,12 +130,19 @@ aasdk. Renamed to the `cp` namespace, aasdk's logger replaced by `src/log.h`.
 
 ## M10. Robustness
 
-- [ ] Adapter unplugged and replugged mid session
-- [ ] Phone unplugged and replugged mid session
-- [ ] Host app killed with a phone connected, restarted: the stale session is cleared and it projects again
-- [ ] Phase 13 retry, provoked with a deliberately oversized view area
+Each case first against the fake adapter (which only proves the plugin does what
+`docs/dongle-protocol.md` says the adapter needs), then on the real one.
+
+- [x] Fake: adapter unbound and rebound mid session
+- [ ] Real: adapter unplugged and replugged mid session
+- [x] Fake: phone unplugged and replugged mid session (`scenarios.sh unplug`)
+- [ ] Real: phone unplugged and replugged mid session
+- [x] Fake: host app killed with a phone connected while the adapter keeps the session (`--sticky-session`), restarted: the stale session is cleared and it projects again (`scenarios.sh sticky`)
+- [ ] Real: the same, which is what the stale session clearing is for
+- [x] Fake: Phase 13 on the first negotiation, the plugin reconfigures once and projects (`scenarios.sh phase13`)
+- [ ] Real: Phase 13 provoked with a deliberately oversized view area
+- [x] A view resized mid session is followed: a new Open at the new size after the view holds still for a second, the phone back in about 3.6 s against the fake. Optional, `CarPlayConfig.followViewResize`
 - [ ] Two firmware versions compared, 2025.02.25.1521 and 2025.10.15.1127
-- [ ] A view resized mid session is followed (needs a new Open, so it drops and reconnects the phone; decide whether that is acceptable or stays a restart)
 
 ## M11. Packaging, CI, ARM64, release
 

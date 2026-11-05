@@ -35,6 +35,7 @@ list(APPEND PLUGIN_SOURCES
   "${CP_SRC}/log.cc"
   "${CP_SRC}/event_bus.cc"
   "${CP_SRC}/frame_ring.cc"
+  "${CP_SRC}/frame_size.cc"
   "${CP_SRC}/test_pattern.cc"
   "${CP_SRC}/audio/audio_input.cc"
   "${CP_SRC}/audio/audio_output.cc"

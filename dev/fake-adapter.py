@@ -265,6 +265,7 @@ class FakeAdapter:
         self.mic_active = False
         self.stats_lock = threading.Lock()
         self.album_art = None
+        self.phase13_sent = False
 
     # -- USB plumbing --
 
@@ -502,6 +503,14 @@ class FakeAdapter:
 
     def on_open(self, raw, fields):
         with self.lock:
+            # The real adapter keeps a phone session across a host that went away without
+            # DisconnectPhone or CloseDongle, and ignores the next Open: no echo, no
+            # Plugged, no keyframe (docs/dongle-protocol.md 8.2, quirk 6). The phone keeps
+            # streaming P frames into the void.
+            if self.args.sticky_session and self.phone:
+                log("--sticky-session: a phone session is up, so this Open is ignored, as "
+                    "the real adapter does")
+                return
             if self.opened:
                 self.end_session("a new Open")
             self.session_gen += 1
@@ -541,6 +550,14 @@ class FakeAdapter:
         self.send(T_BOX_SETTINGS, json.dumps(PHONE_INFO, separators=(",", ":")).encode())
         self.send(T_PLUGGED, u32(3) + u32(0))
         self.send(T_PHASE, u32(7))
+        if self.args.phase13_once and not self.phase13_sent:
+            self.phase13_sent = True
+            # AirPlay negotiation failing, which the real adapter reports when the view or
+            # safe area is larger than the Open size. It then sits there until told to
+            # drop the phone.
+            log("--phase13-once: the negotiation fails with Phase 13")
+            self.send(T_PHASE, u32(13))
+            return
         threading.Thread(target=self.phone_session, args=(sgen, pgen), daemon=True).start()
 
     def phone_alive(self, pgen):
@@ -881,6 +898,12 @@ def main():
     parser.add_argument("--plug-delay", type=float, default=2.0,
                         help="seconds from Open to the fake iPhone connecting (default 2)")
     parser.add_argument("--no-plug", action="store_true", help="never connect a phone")
+    parser.add_argument("--sticky-session", action="store_true",
+                        help="ignore Open while a phone session is up, until the host sends "
+                             "DisconnectPhone or CloseDongle, as a real CCPA does after its "
+                             "host restarted")
+    parser.add_argument("--phase13-once", action="store_true",
+                        help="fail the first phone negotiation with Phase 13")
     parser.add_argument("--fps", type=int, default=30, help="video frame rate (default 30)")
     parser.add_argument("--keyint", type=int, default=900,
                         help="frames between IDRs, CarPlay sends very few (default 900)")

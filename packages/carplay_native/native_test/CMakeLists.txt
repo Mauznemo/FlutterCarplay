@@ -30,3 +30,11 @@ add_executable(stream_parser_test
 target_include_directories(stream_parser_test PRIVATE "${CP_SRC}")
 target_compile_options(stream_parser_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME stream_parser COMMAND stream_parser_test)
+
+add_executable(frame_size_test
+  frame_size_test.cc
+  "${CP_SRC}/frame_size.cc"
+)
+target_include_directories(frame_size_test PRIVATE "${CP_SRC}")
+target_compile_options(frame_size_test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME frame_size COMMAND frame_size_test)

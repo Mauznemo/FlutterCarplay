@@ -24,6 +24,7 @@
 #include "dongle/usb_link.h"
 #include "event_bus.h"
 #include "frame_ring.h"
+#include "frame_size.h"
 #include "present/gl_adapter.h"
 #include "test_pattern.h"
 #include "video/video_decoder.h"
@@ -33,22 +34,6 @@ namespace {
 constexpr int32_t kDefaultDpi = 160;
 constexpr int32_t kDefaultFps = 60;
 constexpr int32_t kDefaultMediaDelayMs = 1000;
-// The frame a view is never asked to exceed. The adapter has 128 MB of memory and a
-// fixed H.264 buffer, and the captures that worked topped out at 2400x960; a larger
-// view gets a picture of its shape at this size, stretched.
-constexpr int32_t kMaxFrameWidth = 2560;
-constexpr int32_t kMaxFrameHeight = 1440;
-// And never smaller than this, which is the smallest CarPlay screen in the wild.
-constexpr int32_t kMinFrameWidth = 640;
-constexpr int32_t kMinFrameHeight = 320;
-// Before any view has a size.
-constexpr int32_t kFallbackWidth = 1280;
-constexpr int32_t kFallbackHeight = 720;
-
-int32_t Even(double value) {
-  const auto rounded = static_cast<int32_t>(std::lround(value));
-  return rounded - (rounded % 2);
-}
 
 std::string CopyOrEmpty(const char* text) { return text == nullptr ? std::string() : text; }
 
@@ -78,6 +63,9 @@ struct CpSession {
   cp::dongle::SessionConfig config;
   // Whether the host app named a frame size, or left it to follow the view.
   bool named_size = false;
+  // Whether a view that changes size while running gets a new frame, which costs a
+  // reconnect of the phone.
+  bool follow_view_resize = true;
 
   std::mutex view_mutex;
   double view_width = 0;
@@ -95,40 +83,26 @@ struct CpSession {
   std::atomic<CpMetadataCallback> metadata_callback{nullptr};
   bool running = false;
 
-  // The frame to ask for: the named one, or the view's size rounded to even, scaled
-  // into the adapter's limits keeping its shape.
-  void ResolveFrameSize() {
+  // The frame to ask for: the named one, or the view's, see frame_size.h.
+  cp::FrameSize FrameForView() {
     if (named_size) {
-      config.width = Even(config.width);
-      config.height = Even(config.height);
-      return;
+      return cp::EvenFrame(config.width, config.height);
     }
-    double width = 0;
-    double height = 0;
-    {
-      std::lock_guard<std::mutex> lock(view_mutex);
-      width = view_width;
-      height = view_height;
-    }
-    if (width < 1 || height < 1) {
-      config.width = kFallbackWidth;
-      config.height = kFallbackHeight;
-      return;
-    }
-    const double shrink = std::min({1.0, kMaxFrameWidth / width, kMaxFrameHeight / height});
-    width *= shrink;
-    height *= shrink;
-    const double grow =
-        std::max({1.0, kMinFrameWidth / width, kMinFrameHeight / height});
-    width = std::min(width * grow, static_cast<double>(kMaxFrameWidth));
-    height = std::min(height * grow, static_cast<double>(kMaxFrameHeight));
-    config.width = Even(width);
-    config.height = Even(height);
+    std::lock_guard<std::mutex> lock(view_mutex);
+    return cp::FrameSizeForView(view_width, view_height);
   }
 
-  int32_t PatternWidth() const { return config.width > 0 ? config.width : kFallbackWidth; }
+  void ResolveFrameSize() {
+    const cp::FrameSize frame = FrameForView();
+    config.width = frame.width;
+    config.height = frame.height;
+  }
+
+  int32_t PatternWidth() const {
+    return config.width > 0 ? config.width : cp::kFallbackFrame.width;
+  }
   int32_t PatternHeight() const {
-    return config.height > 0 ? config.height : kFallbackHeight;
+    return config.height > 0 ? config.height : cp::kFallbackFrame.height;
   }
 };
 
@@ -184,6 +158,7 @@ CpSession* cp_session_create(const CpConfig* config, CpEventCallback on_event) {
                                    config->oem_icon_png + config->oem_icon_png_size);
     }
     resolved.oem_icon_label = CopyOrEmpty(config->oem_icon_label);
+    session->follow_view_resize = config->follow_view_resize != 0;
   }
 
   session->ring.Configure(session->PatternWidth(), session->PatternHeight());
@@ -352,9 +327,24 @@ void cp_session_set_view_size(CpSession* session, double width, double height) {
   if (session == nullptr) {
     return;
   }
-  std::lock_guard<std::mutex> lock(session->view_mutex);
-  session->view_width = width;
-  session->view_height = height;
+  {
+    std::lock_guard<std::mutex> lock(session->view_mutex);
+    session->view_width = width;
+    session->view_height = height;
+  }
+  // A running session started with the view's old size. The adapter only takes a new
+  // one with a new Open, which drops the phone, so the session waits for the view to
+  // hold still before asking. Called on every layout, so most calls change nothing.
+  if (!session->running || session->named_size || !session->follow_view_resize) {
+    return;
+  }
+  const cp::FrameSize frame = session->FrameForView();
+  if (frame.width == session->config.width && frame.height == session->config.height) {
+    return;
+  }
+  session->config.width = frame.width;
+  session->config.height = frame.height;
+  session->dongle->RequestFrameSize(frame.width, frame.height);
 }
 
 void cp_session_set_display_size(CpSession* session, int32_t width, int32_t height) {

@@ -144,6 +144,11 @@ typedef struct {
   const uint8_t* oem_icon_png;
   int32_t oem_icon_png_size;
   const char* oem_icon_label;
+  // Whether a view that changes size while running gets a frame of its new size. It
+  // takes a new Open, which disconnects the phone for a few seconds, so a host app that
+  // resizes often may prefer the old frame fitted into the new view. -1 for the default
+  // (yes).
+  int32_t follow_view_resize;
 } CpConfig;
 
 // State changes and news. `message` may be NULL; otherwise it is heap allocated and
@@ -191,9 +196,9 @@ CP_EXPORT int32_t cp_session_video_height(CpSession* session);
 CP_EXPORT char* cp_session_video_backend(CpSession* session);
 
 // The view's size in physical pixels. With no width and height in the config, the
-// frame the phone is asked for is this, rounded to even and capped, read when the
-// adapter is configured. A view that changes size afterwards is stretched until the
-// next start.
+// frame the phone is asked for is this, rounded to even and capped (frame_size.h). A
+// view that changes size while running gets a new frame once it has held still for a
+// second, which reconnects the phone, unless follow_view_resize is 0.
 CP_EXPORT void cp_session_set_view_size(CpSession* session, double width, double height);
 // The size the texture is drawn at, in physical pixels, so a picture drawn smaller is
 // averaged down by the converter rather than sampled down by Flutter.

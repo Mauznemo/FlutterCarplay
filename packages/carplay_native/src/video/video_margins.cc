@@ -52,33 +52,6 @@ VideoMargins MarginsForView(int32_t frame_width, int32_t frame_height, double vi
   return margins;
 }
 
-FrameSize FrameSizeForView(double view_width, double view_height, bool match_view) {
-  static constexpr FrameSize kCandidates[] = {{800, 480}, {1280, 720}, {1920, 1080}};
-  // Room for the pixel MarginsForView rounds away, and no more. Any real stretch is
-  // visible as blur on text, and a larger frame costs the phone little: what it adds is
-  // margin, which is black and encodes to almost nothing.
-  constexpr double kSlack = 1.5;
-  if (!(view_width > 0.0) || !(view_height > 0.0) || !std::isfinite(view_width) ||
-      !std::isfinite(view_height)) {
-    return {1280, 720};
-  }
-  for (const FrameSize& size : kCandidates) {
-    const VideoMargins margins =
-        match_view ? MarginsForView(size.width, size.height, view_width, view_height)
-                   : VideoMargins{};
-    const double visible_width = size.width - margins.horizontal();
-    const double visible_height = size.height - margins.vertical();
-    // Fitted inside the view the way the view fits it, whole and centred: the
-    // frame holds the view when the fitted picture is not stretched.
-    const double scale =
-        std::min(view_width / visible_width, view_height / visible_height);
-    if (scale <= 1.0 + kSlack / std::min(visible_width, visible_height)) {
-      return size;
-    }
-  }
-  return kCandidates[std::size(kCandidates) - 1];
-}
-
 std::string DescribeMargins(int32_t frame_width, int32_t frame_height,
                             const VideoMargins& margins) {
   return std::to_string(frame_width - margins.horizontal()) + "x" +

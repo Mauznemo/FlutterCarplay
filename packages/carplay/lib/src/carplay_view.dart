@@ -31,8 +31,9 @@ import 'carplay_controller.dart';
 /// starts, so it lays its interface out for the view and is drawn one to one. Unlike
 /// Android Auto, CarPlay takes any size, so there are no margins to crop. Put widgets
 /// *beside* the view to take space from the phone, and *over* it to cover part of
-/// what the phone draws. A view that changes size after the start keeps the frame it
-/// started with, fitted by [fit], until the next start.
+/// what the phone draws. A view that changes size while running gets a new frame once
+/// it holds still, which reconnects the phone; see [CarPlayConfig.followViewResize].
+/// Until then, and with that off, the old frame is fitted by [fit].
 ///
 /// Sizes are measured in physical pixels with [MediaQuery.devicePixelRatioOf]. A host
 /// app that draws on a fixed design canvas and scales it to the screen (a [FittedBox]

@@ -3,7 +3,9 @@
 //
 // From android_auto, where every frame has margins. CarPlay draws at whatever size it is
 // asked for, so here the margins are always zero; the decoder and the present adapter
-// still take them, which keeps those files the same in both repositories.
+// still take them, which keeps those files the same in both repositories. android_auto's
+// FrameSizeForView, its choice among the five 16:9 sizes, is left out: the CarPlay choice
+// is frame_size.h.
 //
 // The protocol names five frame sizes and all of them are 16:9, so a screen of any other
 // shape asks for the nearest one and tells the phone to keep margins clear. The phone
@@ -65,24 +67,6 @@ struct VideoMargins {
 // converter handles by sampling chroma where it really is.
 VideoMargins MarginsForView(int32_t frame_width, int32_t frame_height, double view_width,
                             double view_height);
-
-// A frame size the protocol has a name for.
-struct FrameSize {
-  int32_t width = 0;
-  int32_t height = 0;
-};
-
-// The frame to ask the phone for when the host app left the choice to the head unit:
-// the smallest of 800x480, 1280x720 and 1920x1080 that holds a `view_width` by
-// `view_height` view, in physical pixels. So the picture is drawn one to one and never
-// stretched, which nothing can do well: detail the phone never encoded cannot be put
-// back. 1920x1080 for a view larger than that, and 1280x720 while the view has no size.
-//
-// `match_view` says whether the picture will be given the view's shape with margins, as
-// MarginsForView does, or shown whole and letterboxed. The larger sizes the protocol
-// names are left out: nothing here has tried them, and phones are reported to want H.265
-// for them, which the decoder does not ask for.
-FrameSize FrameSizeForView(double view_width, double view_height, bool match_view);
 
 // "1280x552 of 1280x720", for logging.
 std::string DescribeMargins(int32_t frame_width, int32_t frame_height,

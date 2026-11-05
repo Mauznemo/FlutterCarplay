@@ -22,6 +22,7 @@ What it assumes, all of which is one machine rather than a requirement:
 | `run-example.sh` | build and launch the example app, in the foreground, detached, or straight from the bundle |
 | `fake-adapter.sh` | a software Carlinkit adapter on this machine's USB (dummy_hcd plus a configfs gadget): `setup`, `teardown`, `status`, `log`. Needs sudo and kernel headers |
 | `fake-adapter.py` | the gadget program behind it: answers Open, plugs a fake iPhone, streams H.264 test video, optional audio, metadata and microphone commands |
+| `scenarios.sh` | runs the plugin against the fake in each situation a head unit meets (picture, stop and start, resize, Phase 13, a host killed mid session, the phone leaving) and says PASS or FAIL for each |
 | `dev-environment.md` | the machine, and what it can and cannot be driven to do |
 
 The counterpart is `tools/`, which is for anyone who clones this repository:

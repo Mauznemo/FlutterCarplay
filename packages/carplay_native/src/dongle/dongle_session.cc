@@ -37,6 +37,10 @@ constexpr int64_t kFirstVideoGraceUs = 2000000;
 constexpr int64_t kKeyframeWatchUs = 1000000;
 // Each request restarts the phone's encoder, so they are rationed.
 constexpr int64_t kKeyframeMinGapUs = 500000;
+// How long a view must hold one size before the adapter is reconfigured for it. Each
+// reconfiguration drops the phone, so a window being dragged to a new size must not
+// cause one per frame.
+constexpr int64_t kResizeSettleUs = 1000000;
 // Touch movement is sent at most this often. The picture that comes back is at most
 // 60 fps, so more samples cannot be seen, and a desktop mouse produces hundreds.
 constexpr int64_t kMoveMinGapUs = 16000;
@@ -181,6 +185,8 @@ void DongleSession::Run() {
     std::vector<std::function<void()>> tasks;
     bool failed = false;
     std::string failure;
+    int32_t resize_width = 0;
+    int32_t resize_height = 0;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait_for(lock, std::chrono::milliseconds(50), [this]() {
@@ -193,6 +199,25 @@ void DongleSession::Run() {
       failed = link_failed_;
       failure = failure_;
       link_failed_ = false;
+      if (resize_due_us_ != 0 && NowUs() >= resize_due_us_) {
+        resize_due_us_ = 0;
+        resize_width = resize_width_;
+        resize_height = resize_height_;
+      }
+    }
+
+    if (resize_width > 0) {
+      {
+        std::lock_guard<std::mutex> lock(config_mutex_);
+        config_.width = resize_width;
+        config_.height = resize_height;
+      }
+      if (link_.open()) {
+        EmitNews("The view changed size, asking the phone for " +
+                 std::to_string(resize_width) + "x" + std::to_string(resize_height) + ".");
+        PhoneGone("the view changed size");
+        OnLinkOpened(NowUs());
+      }
     }
 
     for (auto& task : tasks) {
@@ -946,6 +971,16 @@ void DongleSession::SetNightMode(bool night) {
   if (link_.open()) {
     link_.Send(EncodeCommand(night ? Command::kStartNightMode : Command::kStopNightMode));
   }
+}
+
+void DongleSession::RequestFrameSize(int32_t width, int32_t height) {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    resize_width_ = width;
+    resize_height_ = height;
+    resize_due_us_ = NowUs() + kResizeSettleUs;
+  }
+  cv_.notify_all();
 }
 
 void DongleSession::RequestKeyFrame() {

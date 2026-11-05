@@ -81,8 +81,8 @@ class CarPlayConfig {
   /// pixels, rounded to even, so the phone lays out a screen exactly that big and it is
   /// drawn one to one. Unlike Android Auto, CarPlay has no fixed list of sizes. A view
   /// larger than 2560x1440 gets a frame of its shape that fits inside that, stretched,
-  /// because the adapter's memory is the limit. The size is settled when the session
-  /// starts and holds until it is started again.
+  /// because the adapter's memory is the limit. See [followViewResize] for a view that
+  /// changes size while running.
   ///
   /// Set [width] and [height] together to name a size instead.
   final int? width;
@@ -144,6 +144,15 @@ class CarPlayConfig {
   /// The label under [carIcon].
   final String? carIconLabel;
 
+  /// Whether a view that changes size while a phone is connected gets a frame of its new
+  /// size, once it has held still for a second.
+  ///
+  /// The adapter only takes a new size from scratch, so the phone is disconnected and
+  /// reconnects into the new size: a few seconds for a wired iPhone, longer over Wi-Fi.
+  /// Off, the frame the session started with is fitted into the resized view until the
+  /// next start. Ignored when [width] and [height] name a size.
+  final bool followViewResize;
+
   /// Creates a head unit description. The defaults suit a CPC200-CCPA on a screen of
   /// any size.
   const CarPlayConfig({
@@ -163,6 +172,7 @@ class CarPlayConfig {
     this.navigationMetadata = true,
     this.carIcon,
     this.carIconLabel,
+    this.followViewResize = true,
   });
 }
 
