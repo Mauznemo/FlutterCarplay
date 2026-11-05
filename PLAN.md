@@ -177,8 +177,9 @@ or a Windows machine. The same idea here, sharing as much of its shape as makes 
 The full integration, the way LIVI does it: iAP2 and AirPlay on the host, the adapter or an MFi
 chip only for the authentication signature. See `docs/research.md`.
 
-- [ ] Decide the signer hardware: a CCPA or a Carlinkit Mini Ultra 3 reflashed as LIVI Link, or an MFi chip on I2C through a CH341
-- [ ] Study LIVI's `iap2-*` and `livi-cp` crates (GPL-3.0 with an attribution term) and decide: port to C++, or link the Rust crates through a C ABI
+- [x] Study LIVI's `iap2-*` and `livi-cp` crates (GPL-3.0 with an attribution term): written up with file references in `docs/native-carplay.md`, which recommends a C++ port with LIVI's tests as golden vectors, and breaks the work into M13.0 to M13.13 with what hardware each needs
+- [ ] Decide the signer hardware (the doc's shopping list: a Carlinkit Mini Ultra 3 or C2Air reflashed as LIVI Link, or an MFi 3.0 chip on a CH341A)
+- [ ] Before any LIVI derived code lands: the attribution text in NOTICE, the READMEs and the example's About screen, see `docs/native-carplay.md` 5.4
 - [ ] A `native/` backend directory beside `dongle/`, behind the same decoder, audio and hook seam
 - [ ] Wired iAP2 identification and authentication against a signer
 - [ ] AirPlay screen and audio over USB NCM

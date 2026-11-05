@@ -86,6 +86,7 @@ docs/
   dongle-protocol.md            the adapter's USB protocol, from public sources
   architecture.md               how the pieces fit together
   packaging.md                  what a machine needs to build and run it
+  native-carplay.md             the planned native backend, after LIVI
 tools/                          what anyone cloning this needs
   setup-dev-machine.sh          build dependencies and the udev rule
   native-test.sh                the native unit tests
