@@ -38,3 +38,11 @@ add_executable(frame_size_test
 target_include_directories(frame_size_test PRIVATE "${CP_SRC}")
 target_compile_options(frame_size_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME frame_size COMMAND frame_size_test)
+
+add_executable(nmea_test
+  nmea_test.cc
+  "${CP_SRC}/dongle/nmea.cc"
+)
+target_include_directories(nmea_test PRIVATE "${CP_SRC}")
+target_compile_options(nmea_test PRIVATE -Wall -Wextra -Werror)
+add_test(NAME nmea COMMAND nmea_test)

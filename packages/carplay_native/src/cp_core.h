@@ -149,6 +149,16 @@ typedef struct {
   // resizes often may prefer the old frame fitted into the new view. -1 for the default
   // (yes).
   int32_t follow_view_resize;
+  // Pixels of the frame, per side, CarPlay keeps its controls out of while its wallpaper
+  // fills the whole frame: a round bezel, a host app's own buttons over the corner. Each
+  // is capped at a quarter of the frame. All zero for none.
+  int32_t safe_left;
+  int32_t safe_top;
+  int32_t safe_right;
+  int32_t safe_bottom;
+  // 1 when the car will give the phone its position through cp_session_set_location.
+  // The phone then stops using its own receiver, so set it only for a car that has one.
+  int32_t gps;
 } CpConfig;
 
 // State changes and news. `message` may be NULL; otherwise it is heap allocated and
@@ -214,6 +224,13 @@ CP_EXPORT int32_t cp_session_send_touch(CpSession* session, int32_t action,
 CP_EXPORT int32_t cp_session_send_command(CpSession* session, int32_t command);
 CP_EXPORT int32_t cp_session_request_key_frame(CpSession* session);
 CP_EXPORT int32_t cp_session_set_night_mode(CpSession* session, int32_t night);
+
+// The car's position. NaN for an altitude, speed, heading or accuracy the car does not
+// know; `time_ms` is UTC milliseconds since the epoch, 0 for now. Sent while the phone
+// asks for it, and kept for the next phone. -1 unless the config's gps was 1.
+CP_EXPORT int32_t cp_session_set_location(CpSession* session, double latitude,
+                                          double longitude, double altitude, double speed,
+                                          double heading, double accuracy, int64_t time_ms);
 
 CP_EXPORT int32_t cp_session_set_audio_volume(CpSession* session, int32_t stream,
                                               double volume);

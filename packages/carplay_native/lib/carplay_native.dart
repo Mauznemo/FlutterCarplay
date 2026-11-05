@@ -9,6 +9,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:typed_data';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:carplay_platform_interface/carplay_platform_interface.dart';
 import 'package:ffi/ffi.dart';
@@ -136,6 +137,9 @@ class CarPlayNative extends CarPlayPlatform {
       _onNativeMetadata,
     );
 
+    // The safe area is given in logical pixels and the frame is physical. A host app
+    // that scales its own canvas should give insets already scaled by its own ratio.
+    final ratio = PlatformDispatcher.instance.implicitView?.devicePixelRatio ?? 1.0;
     final native = calloc<CpConfig>();
     final name = config.name.toNativeUtf8();
     final label = (config.carIconLabel ?? '').toNativeUtf8();
@@ -165,7 +169,12 @@ class CarPlayNative extends CarPlayPlatform {
         ..oem_icon_png = iconBytes
         ..oem_icon_png_size = icon?.length ?? 0
         ..oem_icon_label = label.cast()
-        ..follow_view_resize = config.followViewResize ? 1 : 0;
+        ..follow_view_resize = config.followViewResize ? 1 : 0
+        ..safe_left = (config.safeArea.left * ratio).round()
+        ..safe_top = (config.safeArea.top * ratio).round()
+        ..safe_right = (config.safeArea.right * ratio).round()
+        ..safe_bottom = (config.safeArea.bottom * ratio).round()
+        ..gps = config.gps ? 1 : 0;
       _nightMode ??= config.nightMode;
 
       _session = _bindings.cp_session_create(native, _eventCallback!.nativeFunction);
@@ -339,6 +348,23 @@ class CarPlayNative extends CarPlayPlatform {
     if (_session != nullptr) {
       _bindings.cp_session_request_key_frame(_session);
     }
+  }
+
+  @override
+  void setLocation(CarPlayLocation location) {
+    if (_session == nullptr) {
+      return;
+    }
+    _bindings.cp_session_set_location(
+      _session,
+      location.latitude,
+      location.longitude,
+      location.altitude ?? double.nan,
+      location.speed ?? double.nan,
+      location.heading ?? double.nan,
+      location.accuracy ?? double.nan,
+      location.time?.millisecondsSinceEpoch ?? 0,
+    );
   }
 
   @override

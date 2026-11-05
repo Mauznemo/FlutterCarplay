@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "json.h"
 
+#include "../text_format.h"
+
 #include <cmath>
 #include <cstdio>
 
@@ -104,9 +106,8 @@ Json& Json::AddDouble(const char* key, double value) {
   // than a token no parser accepts.
   Key(key);
   if (std::isfinite(value)) {
-    char formatted[32];
-    snprintf(formatted, sizeof(formatted), "%.6g", value);
-    body_.append(formatted);
+    // Not printf: its decimal point follows the app's locale. See text_format.h.
+    body_.append(ShortestDecimal(value));
   } else {
     body_.append("null");
   }

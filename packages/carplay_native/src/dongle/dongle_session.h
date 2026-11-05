@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "../audio/pcm_sink.h"
+#include "nmea.h"
 #include "protocol.h"
 #include "usb_link.h"
 
@@ -81,6 +82,14 @@ struct SessionConfig {
   // CarPlay shows the adapter's own.
   std::vector<uint8_t> oem_icon_png;
   std::string oem_icon_label;
+  // Pixels of the frame, per side, CarPlay keeps its controls out of while its wallpaper
+  // still fills the whole frame. All zero for none.
+  int32_t safe_left = 0;
+  int32_t safe_top = 0;
+  int32_t safe_right = 0;
+  int32_t safe_bottom = 0;
+  // Whether the car has a position to give the phone, through SetLocation.
+  bool gps = false;
 };
 
 // One finger as Dart reports it: projected video pixels.
@@ -149,6 +158,11 @@ class DongleSession {
   // Applies at once to a connected phone, and to every later one.
   void SetNightMode(bool night);
 
+  // The car's position. Sent to the phone while it has asked for one (the adapter's
+  // StartGNSSReport), at once and then once a second, and kept for the next phone.
+  // Ignored unless SessionConfig::gps was set when the adapter was configured.
+  void SetLocation(const GnssFix& fix);
+
   // Asks for a new frame size. Applied once no new size has been asked for in
   // kResizeSettleUs, by configuring the adapter again from Open, which drops a connected
   // phone and lets it reconnect into the new size. A wired iPhone is back within seconds.
@@ -193,6 +207,9 @@ class DongleSession {
   void EmitMetadata(MetadataKind kind, const std::string& json);
   void EmitAdapterInfo();
   void EmitRequest(const char* name);
+  // Sends the latest fix if the phone wants one and the last went out at least
+  // `min_gap_us` ago.
+  void SendFix(int64_t min_gap_us);
   std::string BoxSettingsJson() const;
 
   Hooks hooks_;
@@ -226,6 +243,12 @@ class DongleSession {
   // would get in its way.
   std::atomic<bool> reconnecting_{false};
   std::atomic<bool> phase13_retried_{false};
+  // The phone asked for the car's position and has not said stop.
+  std::atomic<bool> gnss_reporting_{false};
+  std::mutex fix_mutex_;
+  GnssFix fix_;
+  bool has_fix_ = false;
+  int64_t last_fix_sent_us_ = 0;
 
   // libusb event thread only.
   struct StreamRoute {

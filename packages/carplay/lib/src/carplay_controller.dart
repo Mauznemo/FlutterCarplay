@@ -194,6 +194,10 @@ class CarPlayController extends ChangeNotifier {
   void sendKey(CarPlayKey key, {required bool down}) =>
       _platform.sendKey(key, down: down);
 
+  /// The car's position, from the car's own receiver. Sent to the phone while it asks
+  /// for one, and only with [CarPlayConfig.gps] set; call it whenever a fix arrives.
+  void setLocation(CarPlayLocation location) => _platform.setLocation(location);
+
   /// Whether CarPlay is in its dark appearance.
   bool get nightMode => _platform.nightMode;
 

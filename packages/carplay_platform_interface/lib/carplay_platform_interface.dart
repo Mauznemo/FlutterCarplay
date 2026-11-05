@@ -153,6 +153,19 @@ class CarPlayConfig {
   /// next start. Ignored when [width] and [height] name a size.
   final bool followViewResize;
 
+  /// Space at each edge CarPlay keeps its controls out of, in logical pixels, while its
+  /// wallpaper still fills the whole view: a round or notched screen, or a host app's
+  /// own buttons over a corner. Each side is capped at a quarter of the view.
+  final EdgeInsets safeArea;
+
+  /// Whether the car gives the phone its position, through [CarPlayPlatform.setLocation].
+  ///
+  /// A promise rather than a feature switch: a phone told the car has a position stops
+  /// using its own receiver, so a car that offers it and never sends a fix takes
+  /// navigation away from a phone that was managing perfectly well. android_auto learned
+  /// that the hard way. The adapter may need a reboot before a change reaches the phone.
+  final bool gps;
+
   /// Creates a head unit description. The defaults suit a CPC200-CCPA on a screen of
   /// any size.
   const CarPlayConfig({
@@ -173,6 +186,8 @@ class CarPlayConfig {
     this.carIcon,
     this.carIconLabel,
     this.followViewResize = true,
+    this.safeArea = EdgeInsets.zero,
+    this.gps = false,
   });
 }
 
@@ -213,6 +228,47 @@ class CarPlayVideoInfo {
 
   @override
   String toString() => 'CarPlayVideoInfo($width x $height, $decoder)';
+}
+
+/// The car's position, for a phone that uses the car's receiver rather than its own.
+///
+/// Null means the car does not know, which is not the same as zero: an unknown altitude
+/// is an absent field, not sea level.
+class CarPlayLocation {
+  /// Degrees north, negative for south.
+  final double latitude;
+
+  /// Degrees east, negative for west.
+  final double longitude;
+
+  /// Metres above sea level.
+  final double? altitude;
+
+  /// Metres per second.
+  final double? speed;
+
+  /// Degrees clockwise from true north.
+  final double? heading;
+
+  /// Horizontal accuracy in metres.
+  final double? accuracy;
+
+  /// When the fix was taken. Null for now.
+  final DateTime? time;
+
+  /// Creates a fix.
+  const CarPlayLocation({
+    required this.latitude,
+    required this.longitude,
+    this.altitude,
+    this.speed,
+    this.heading,
+    this.accuracy,
+    this.time,
+  });
+
+  @override
+  String toString() => 'CarPlayLocation($latitude, $longitude)';
 }
 
 /// What a touch report describes. Android's `MotionEvent` numbering, the same as
@@ -507,6 +563,10 @@ abstract class CarPlayPlatform extends PlatformInterface {
   /// Asks the phone for a fresh keyframe. The plugin does this by itself when its
   /// decoder needs one; this is for a host app that recreated something.
   void requestKeyFrame() {}
+
+  /// The car's position, sent to the phone while it asks for one. Needs
+  /// [CarPlayConfig.gps].
+  void setLocation(CarPlayLocation location) {}
 
   /// Whether CarPlay is in its dark appearance.
   bool get nightMode => false;

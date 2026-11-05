@@ -21,6 +21,7 @@ export 'package:carplay_platform_interface/carplay_platform_interface.dart'
         CarPlayDriveSide,
         CarPlayEvent,
         CarPlayKey,
+        CarPlayLocation,
         CarPlayManeuver,
         CarPlayMetadata,
         CarPlayMicrophone,

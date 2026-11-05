@@ -236,6 +236,23 @@ microphone, and unplug and replug timing (`setup -- --help`). Log in `/tmp/cp-fa
 - Loading `dummy_hcd` taints the kernel until the next reboot. Harmless, but say so.
 - Tear it down when done, and never leave the example running against it.
 
+## Numbers in wire formats
+
+**Never format a double with printf into anything that goes on the wire.** The Flutter app runs
+with the user's locale, and on the author's German machine `%.4f` writes `5231,2005`: NMEA's
+fields are comma separated, and JSON has no such number. Found with the GPS sentences, against
+the fake adapter, after the native tests (which run in the C locale) had passed.
+`src/text_format.h` formats through `std::to_chars`, which ignores the locale; use it, and test
+under `de_DE` as `native_test/nmea_test.cc` does. android_auto's `Json::AddDouble` has the same
+latent bug, unused there today.
+
+## The car's position, which is a promise
+
+`CarPlayConfig.gps` tells the phone the car has a position, and a phone told that stops using
+its own receiver: offering it and then not feeding `setLocation` takes navigation away. The same
+rule android_auto's sensors follow. Fixes go out only while the phone has asked (Command 18 until
+19), once a second and on every new one.
+
 ## Audio and the microphone through the adapter
 
 - Two inbound streams, main (1) and navigation (2). The main one carries music at 48 kHz stereo

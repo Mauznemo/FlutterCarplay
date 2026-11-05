@@ -19,8 +19,17 @@ class SimulatedScreen extends StatefulWidget {
   /// Which side the dock is on.
   final CarPlayDriveSide driveSide;
 
+  /// Where the controls stay out of, as a real phone keeps out of the safe area. The
+  /// background still fills everything.
+  final EdgeInsets safeArea;
+
   /// Creates the screen.
-  const SimulatedScreen({super.key, required this.phone, required this.driveSide});
+  const SimulatedScreen({
+    super.key,
+    required this.phone,
+    required this.driveSide,
+    this.safeArea = EdgeInsets.zero,
+  });
 
   @override
   State<SimulatedScreen> createState() => _SimulatedScreenState();
@@ -106,7 +115,12 @@ class _SimulatedScreenState extends State<SimulatedScreen> {
             color: colors.background,
             child: Stack(
               children: [
-                Positioned.fill(child: Row(children: row)),
+                Positioned.fill(
+                  child: Padding(
+                    padding: widget.safeArea,
+                    child: Row(children: row),
+                  ),
+                ),
                 if (phone.call.state != CarPlayCallState.idle)
                   Positioned.fill(
                     child: _CallScreen(phone: phone, colors: colors, unit: unit),

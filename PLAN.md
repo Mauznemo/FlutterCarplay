@@ -27,6 +27,7 @@ backend later; `docs/research.md` says why.
 | M6 | Microphone: Siri and calls | written, the pipeline verified against the fake adapter |
 | M7 | Input: touch, keys, Siri button, night mode | written, unverified |
 | M8 | Metadata: now playing, album art, navigation, calls | written, now playing and navigation verified against the fake adapter |
+| M8b | Extras: safe area, the car's position, cluster video | safe area and position verified against the fake |
 | M9 | Wireless CarPlay through the adapter | written, unverified |
 | M10 | Robustness: replugs, restarts, firmware versions | **in progress**, every case passing against the fake adapter, none yet on hardware |
 | M11 | Packaging, CI, ARM64, release | in progress |
@@ -120,6 +121,14 @@ aasdk. Renamed to the `cp` namespace, aasdk's logger replaced by `src/log.h`.
 - [ ] A call's status, incoming and outgoing
 - [ ] The car icon in CarPlay sends `CarPlayRequest.showHostUi`, with a custom icon from `CarPlayConfig.carIcon`
 - [ ] Adapter info and phone info on the example's adapter panel
+
+## M8b. Extras from the protocol
+
+- [x] Safe area (`CarPlayConfig.safeArea`): `HU_VIEWAREA_INFO` and `HU_SAFEAREA_INFO` after Open and BoxSettings, clamped and even. Reaches the fake as `760, 460, 40, 0, 1` for 40 left and 20 bottom on 800x480 (`scenarios.sh features`)
+- [x] The car's position (`CarPlayConfig.gps`, `setLocation`): GPGGA and GPRMC sent while the phone asks (Command 18), once a second and on every new fix, `GNSSCapability` 3. Reaches the fake (`scenarios.sh features`). Found and fixed on the way: the NMEA had decimal commas under a German locale
+- [ ] Real: CarPlay keeps its controls inside the safe area
+- [ ] Real: Maps uses the car's position (and whether GnssData wants the u32 length prefix the CCPA docs show)
+- [ ] Instrument cluster video (`naviScreenInfo`, Command 508, the 0x2C stream) into a second texture
 
 ## M9. Wireless CarPlay through the adapter
 

@@ -45,6 +45,11 @@ constexpr int64_t kResizeSettleUs = 1000000;
 // 60 fps, so more samples cannot be seen, and a desktop mouse produces hundreds.
 constexpr int64_t kMoveMinGapUs = 16000;
 
+// How often the car's position is repeated while the phone wants it, and the least
+// time between two fixes however fast the host app sets them.
+constexpr int64_t kFixRepeatUs = 1000000;
+constexpr int64_t kFixMinGapUs = 200000;
+
 // Fixed paths on the adapter. Nothing outside this list is ever written: some paths
 // start a firmware update, and there is no whitelist on the adapter's side.
 constexpr const char* kDpiFile = "/tmp/screen_dpi";
@@ -55,6 +60,8 @@ constexpr const char* kChargeModeFile = "/tmp/charge_mode";
 constexpr const char* kBoxNameFile = "/etc/box_name";
 constexpr const char* kAirPlayConfFile = "/etc/airplay.conf";
 constexpr const char* kOemIconFile = "/etc/oem_icon.png";
+constexpr const char* kViewAreaFile = "/etc/RiddleBoxData/HU_VIEWAREA_INFO";
+constexpr const char* kSafeAreaFile = "/etc/RiddleBoxData/HU_SAFEAREA_INFO";
 
 int64_t NowUs() {
   return std::chrono::duration_cast<std::chrono::microseconds>(
@@ -239,6 +246,7 @@ void DongleSession::Run() {
       // Reset before the link opens rather than after: reads start the moment it does,
       // and they would land in state that still belongs to the last adapter.
       routes_ = {};
+      gnss_reporting_ = false;
       reconnecting_ = false;
       phase13_retried_ = false;
       phone_connected_ = false;
@@ -295,6 +303,10 @@ void DongleSession::Run() {
         CP_LOG(info) << "[Dongle] no phone yet, putting the adapter into pairing mode";
         link_.Send(EncodeCommand(Command::kWifiPair));
       }
+    }
+    // A phone that asked for the car's position gets it every second, moving or not.
+    if (gnss_reporting_.load()) {
+      SendFix(kFixRepeatUs);
     }
     // A CarPlay phone that connected but has not shown a picture. The stream normally
     // starts with a keyframe on its own; this is for when it did not.
@@ -354,6 +366,29 @@ void DongleSession::OnLinkOpened(int64_t now) {
   open.work_mode = WorkMode::kCarPlay;
   Schedule(EncodeOpen(open));
   Schedule(EncodeBoxSettings(BoxSettingsJson()));
+  // The safe area, after Open and BoxSettings because both reset it. The adapter rejects
+  // a safe area larger than the view area or a view area larger than the Open size with
+  // Phase 13, so both are derived from the Open size and clamped, and even like it.
+  if (config.safe_left > 0 || config.safe_top > 0 || config.safe_right > 0 ||
+      config.safe_bottom > 0) {
+    auto even = [](int32_t value) { return std::max(0, value - value % 2); };
+    const int32_t width = config.width;
+    const int32_t height = config.height;
+    const int32_t left = even(std::min(config.safe_left, width / 4));
+    const int32_t right = even(std::min(config.safe_right, width / 4));
+    const int32_t top = even(std::min(config.safe_top, height / 4));
+    const int32_t bottom = even(std::min(config.safe_bottom, height / 4));
+    const auto w = static_cast<uint32_t>(width);
+    const auto h = static_cast<uint32_t>(height);
+    Schedule(EncodeSendFile(kViewAreaFile, std::vector<uint32_t>{w, h, w, h, 0, 0}));
+    // The last field, 1, lets the wallpaper fill the whole view while the interface
+    // keeps inside the safe area.
+    Schedule(EncodeSendFile(
+        kSafeAreaFile,
+        std::vector<uint32_t>{static_cast<uint32_t>(width - left - right),
+                              static_cast<uint32_t>(height - top - bottom),
+                              static_cast<uint32_t>(left), static_cast<uint32_t>(top), 1u}));
+  }
   Schedule(EncodeSendFile(kNightModeFile, config.night_mode ? 1u : 0u));
   Schedule(EncodeSendFile(kHandDriveFile, config.right_hand_drive ? 1u : 0u));
   Schedule(EncodeSendFile(kChargeModeFile, config.fast_charge ? 1u : 0u));
@@ -441,8 +476,10 @@ std::string DongleSession::BoxSettingsJson() const {
       .AddInt("DashboardInfo", config.dashboard_info)
       .AddInt("ScreenDPI", config.dpi)
       .AddInt("UseBTPhone", 0)
-      .AddInt("gps", 0)
-      .AddInt("GNSSCapability", 0)
+      .AddInt("gps", config.gps ? 1 : 0)
+      // GPGGA and GPRMC, the two sentences NmeaSentences writes. Zero means the phone
+      // never asks. A change may need the adapter to reboot before the phone sees it.
+      .AddInt("GNSSCapability", config.gps ? 3 : 0)
       .AddInt("fps", config.fps);
   if (!name.empty()) {
     json.AddString("boxName", name).AddString("btName", name).AddString("wifiName", name);
@@ -826,10 +863,17 @@ void DongleSession::OnCommand(uint32_t id) {
     case Command::kReleaseVideoFocus:
       EmitRequest("videoFocusReleased");
       return;
+    case Command::kStartGnssReport:
+      CP_LOG(info) << "[Dongle] the phone asks for the car's position";
+      gnss_reporting_ = true;
+      Post([this]() { SendFix(0); });
+      return;
+    case Command::kStopGnssReport:
+      CP_LOG(info) << "[Dongle] the phone no longer wants the car's position";
+      gnss_reporting_ = false;
+      return;
     case Command::kRequestNaviFocus:
     case Command::kReleaseNaviFocus:
-    case Command::kStartGnssReport:
-    case Command::kStopGnssReport:
       CP_LOG(debug) << "[Dongle] command " << id;
       return;
     default:
@@ -971,6 +1015,40 @@ void DongleSession::SetNightMode(bool night) {
   if (link_.open()) {
     link_.Send(EncodeCommand(night ? Command::kStartNightMode : Command::kStopNightMode));
   }
+}
+
+void DongleSession::SetLocation(const GnssFix& fix) {
+  {
+    std::lock_guard<std::mutex> lock(fix_mutex_);
+    fix_ = fix;
+    has_fix_ = true;
+  }
+  SendFix(kFixMinGapUs);
+}
+
+void DongleSession::SendFix(int64_t min_gap_us) {
+  if (!gnss_reporting_.load() || !link_.open()) {
+    return;
+  }
+  GnssFix fix;
+  {
+    std::lock_guard<std::mutex> lock(fix_mutex_);
+    const int64_t now = NowUs();
+    if (!has_fix_ || now - last_fix_sent_us_ < min_gap_us) {
+      return;
+    }
+    last_fix_sent_us_ = now;
+    fix = fix_;
+  }
+  if (fix.time_ms == 0) {
+    fix.time_ms = static_cast<int64_t>(std::time(nullptr)) * 1000;
+  }
+  // The NMEA text as it is, which is what the host that has this working sends. The
+  // adapter's own documentation shows a u32 length in front; see docs/dongle-protocol.md
+  // 3.11, and try that if a real phone ignores these.
+  const std::string text = NmeaSentences(fix);
+  link_.Send(Encode(Type::kGnssData, reinterpret_cast<const uint8_t*>(text.data()),
+                    text.size()));
 }
 
 void DongleSession::RequestFrameSize(int32_t width, int32_t height) {

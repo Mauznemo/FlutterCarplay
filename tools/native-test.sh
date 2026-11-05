@@ -19,6 +19,12 @@ if command -v ninja >/dev/null; then
 fi
 
 cmake -S "$REPO/packages/carplay_native/native_test" -B "$BUILD" "${GENERATOR[@]}" >/dev/null
-cmake --build "$BUILD" >/dev/null
+# Quiet when it builds, the whole output when it does not, so a compile error is never a
+# silent non zero exit.
+if ! output="$(cmake --build "$BUILD" 2>&1)"; then
+  echo "$output" >&2
+  echo "native-test: the build failed" >&2
+  exit 1
+fi
 ctest --test-dir "$BUILD" --output-on-failure
 echo OK

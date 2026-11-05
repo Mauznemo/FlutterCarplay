@@ -468,7 +468,8 @@ class FakeAdapter:
             if had:
                 log("session closed, waiting for a new Open")
         elif msg_type == T_GNSS:
-            log("<- GnssData, %d bytes: %s" % (size, text_preview(payload)))
+            text = payload.decode("ascii", "replace").strip().replace("\r\n", " | ")
+            log("<- GnssData, %d bytes: %s" % (size, text))
         else:
             log("<- %s, %d bytes%s" % (name, size,
                                        (": " + text_preview(payload)) if size else ""))
@@ -486,6 +487,8 @@ class FakeAdapter:
         content = payload[offset + 4:offset + 4 + content_len]
         if content_len == 4:
             value = "u32 %d" % struct.unpack("<I", content)[0]
+        elif content_len % 4 == 0 and 4 < content_len <= 32 and path.startswith("/etc/RiddleBoxData/"):
+            value = "u32 " + ", ".join(str(v) for v in struct.unpack("<%dI" % (content_len // 4), content))
         else:
             value = text_preview(content)
         return "%s = %s" % (path, value)
@@ -586,6 +589,10 @@ class FakeAdapter:
             threading.Thread(target=worker, args=(pgen,), daemon=True).start()
         if args.unplug_after is not None:
             self.later(args.unplug_after, alive, lambda: self.simulate_unplug(sgen, pgen))
+        if args.gnss:
+            # The phone wants the car's position, which the adapter says with Command 18
+            # (StartGNSSReport). The host answers with GnssData, logged as it arrives.
+            self.later(1.0, alive, lambda: self.send(T_COMMAND, u32(18), pgen=pgen))
 
     def unplug(self, why):
         with self.lock:
@@ -902,6 +909,9 @@ def main():
                         help="ignore Open while a phone session is up, until the host sends "
                              "DisconnectPhone or CloseDongle, as a real CCPA does after its "
                              "host restarted")
+    parser.add_argument("--gnss", action="store_true",
+                        help="once streaming, ask the host for the car's position "
+                             "(Command 18)")
     parser.add_argument("--phase13-once", action="store_true",
                         help="fail the first phone negotiation with Phase 13")
     parser.add_argument("--fps", type=int, default=30, help="video frame rate (default 30)")

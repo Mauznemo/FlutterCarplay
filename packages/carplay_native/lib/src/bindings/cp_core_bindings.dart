@@ -297,6 +297,60 @@ class CpCoreBindings {
   late final _cp_session_set_night_mode = _cp_session_set_night_modePtr
       .asFunction<int Function(ffi.Pointer<CpSession>, int)>();
 
+  /// The car's position. NaN for an altitude, speed, heading or accuracy the car does not
+  /// know; `time_ms` is UTC milliseconds since the epoch, 0 for now. Sent while the phone
+  /// asks for it, and kept for the next phone. -1 unless the config's gps was 1.
+  int cp_session_set_location(
+    ffi.Pointer<CpSession> session,
+    double latitude,
+    double longitude,
+    double altitude,
+    double speed,
+    double heading,
+    double accuracy,
+    int time_ms,
+  ) {
+    return _cp_session_set_location(
+      session,
+      latitude,
+      longitude,
+      altitude,
+      speed,
+      heading,
+      accuracy,
+      time_ms,
+    );
+  }
+
+  late final _cp_session_set_locationPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Int32 Function(
+            ffi.Pointer<CpSession>,
+            ffi.Double,
+            ffi.Double,
+            ffi.Double,
+            ffi.Double,
+            ffi.Double,
+            ffi.Double,
+            ffi.Int64,
+          )
+        >
+      >('cp_session_set_location');
+  late final _cp_session_set_location = _cp_session_set_locationPtr
+      .asFunction<
+        int Function(
+          ffi.Pointer<CpSession>,
+          double,
+          double,
+          double,
+          double,
+          double,
+          double,
+          int,
+        )
+      >();
+
   int cp_session_set_audio_volume(
     ffi.Pointer<CpSession> session,
     int stream,
@@ -814,6 +868,26 @@ final class CpConfig extends ffi.Struct {
   /// (yes).
   @ffi.Int32()
   external int follow_view_resize;
+
+  /// Pixels of the frame, per side, CarPlay keeps its controls out of while its wallpaper
+  /// fills the whole frame: a round bezel, a host app's own buttons over the corner. Each
+  /// is capped at a quarter of the frame. All zero for none.
+  @ffi.Int32()
+  external int safe_left;
+
+  @ffi.Int32()
+  external int safe_top;
+
+  @ffi.Int32()
+  external int safe_right;
+
+  @ffi.Int32()
+  external int safe_bottom;
+
+  /// 1 when the car will give the phone its position through cp_session_set_location.
+  /// The phone then stops using its own receiver, so set it only for a car that has one.
+  @ffi.Int32()
+  external int gps;
 }
 
 /// State changes and news. `message` may be NULL; otherwise it is heap allocated and

@@ -218,7 +218,11 @@ class CarPlaySimulator extends CarPlayPlatform {
     if (_testPattern && !_streaming) {
       return const _Pattern();
     }
-    return SimulatedScreen(phone: _phone, driveSide: _config.driveSide);
+    return SimulatedScreen(
+      phone: _phone,
+      driveSide: _config.driveSide,
+      safeArea: _config.safeArea,
+    );
   }
 
   Size _frameFor(Size view) {
@@ -314,6 +318,15 @@ class CarPlaySimulator extends CarPlayPlatform {
 
   @override
   void sendKey(CarPlayKey key, {required bool down}) => _phone.key(key, down: down);
+
+  CarPlayLocation? _location;
+
+  /// The last position [setLocation] was given, which the pretend phone does nothing
+  /// with but a test can read back.
+  CarPlayLocation? get location => _location;
+
+  @override
+  void setLocation(CarPlayLocation location) => _location = location;
 
   bool _night = false;
 

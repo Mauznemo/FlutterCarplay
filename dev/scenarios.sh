@@ -12,6 +12,7 @@
 #   sticky    the host dies mid session (kill -9) while the adapter clings to the phone,
 #             and the restarted host still gets a picture
 #   unplug    the phone leaves mid session and comes back
+#   features  a safe area and the car's position reach the adapter
 #
 # Needs what dev/fake-adapter.sh needs (sudo, kernel headers). Leaves the fake torn down
 # and the example not running. Logs: /tmp/cp-fake-adapter.log, /tmp/cp-example.log.
@@ -96,7 +97,20 @@ scenario_unplug() {
     wait_for "$APP_LOG" "picture is on screen" 20 "$mark"
 }
 
-ALL=(basic phase13 sticky unplug)
+scenario_features() {
+  fake --gnss
+  local mark; mark=$(lines "$FAKE_LOG")
+  (cd "$REPO/example" &&
+    flutter test integration_test/features_test.dart -d linux 2>&1 | tail -n 3 |
+    grep -q "All tests passed") || return 1
+  # 800x480 with 40 left and 20 bottom at this machine's ratio of 1.
+  tail -n +"$((mark + 1))" "$FAKE_LOG" | grep -q "HU_SAFEAREA_INFO = u32 760, 460, 40, 0, 1" &&
+    # A point, not the locale's comma: 5231.2000, never 5231,2000.
+    tail -n +"$((mark + 1))" "$FAKE_LOG" | grep -qE 'GnssData.*GPGGA,[0-9.]+,[0-9]{4}\.[0-9]{4},N' &&
+    tail -n +"$((mark + 1))" "$FAKE_LOG" | grep -q '"GNSSCapability":3'
+}
+
+ALL=(basic phase13 sticky unplug features)
 WANTED=("$@")
 [ ${#WANTED[@]} -gt 0 ] || WANTED=("${ALL[@]}")
 

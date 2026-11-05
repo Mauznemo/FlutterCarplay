@@ -159,6 +159,11 @@ CpSession* cp_session_create(const CpConfig* config, CpEventCallback on_event) {
     }
     resolved.oem_icon_label = CopyOrEmpty(config->oem_icon_label);
     session->follow_view_resize = config->follow_view_resize != 0;
+    resolved.safe_left = std::max(0, config->safe_left);
+    resolved.safe_top = std::max(0, config->safe_top);
+    resolved.safe_right = std::max(0, config->safe_right);
+    resolved.safe_bottom = std::max(0, config->safe_bottom);
+    resolved.gps = config->gps != 0;
   }
 
   session->ring.Configure(session->PatternWidth(), session->PatternHeight());
@@ -395,6 +400,24 @@ int32_t cp_session_set_night_mode(CpSession* session, int32_t night) {
   }
   session->config.night_mode = night != 0;
   session->dongle->SetNightMode(night != 0);
+  return 0;
+}
+
+int32_t cp_session_set_location(CpSession* session, double latitude, double longitude,
+                                double altitude, double speed, double heading,
+                                double accuracy, int64_t time_ms) {
+  if (session == nullptr || !session->config.gps) {
+    return -1;
+  }
+  cp::dongle::GnssFix fix;
+  fix.latitude = latitude;
+  fix.longitude = longitude;
+  fix.altitude = altitude;
+  fix.speed = speed;
+  fix.heading = heading;
+  fix.accuracy = accuracy;
+  fix.time_ms = time_ms;
+  session->dongle->SetLocation(fix);
   return 0;
 }
 

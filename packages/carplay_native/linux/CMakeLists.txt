@@ -42,6 +42,7 @@ list(APPEND PLUGIN_SOURCES
   "${CP_SRC}/audio/pulse_sink.cc"
   "${CP_SRC}/audio/pulse_source.cc"
   "${CP_SRC}/dongle/dongle_session.cc"
+  "${CP_SRC}/dongle/nmea.cc"
   "${CP_SRC}/dongle/protocol.cc"
   "${CP_SRC}/dongle/stream_parser.cc"
   "${CP_SRC}/dongle/usb_link.cc"
