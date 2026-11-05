@@ -158,7 +158,7 @@ Each case first against the fake adapter (which only proves the plugin does what
 
 - [x] CI: analyze, Dart tests, native unit tests, PR title check
 - [ ] CI: Linux build on x86_64 and ARM64
-- [ ] `docs/packaging.md`: what a machine needs to run a build
+- [x] `docs/packaging.md`: what a machine needs to run a build, read off the built library
 - [ ] Publish to pub.dev, once M4 has projected (the pubspecs say `publish_to: none` until then)
 
 ## M12. Simulator for macOS and Windows

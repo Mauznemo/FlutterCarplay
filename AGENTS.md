@@ -24,7 +24,8 @@ this machine, not when it merely compiles. Also update the status table at the t
 when a milestone changes state.
 
 Background reading, only when relevant: `docs/architecture.md` (how the pieces fit),
-`docs/dongle-protocol.md` (the adapter's USB protocol, every id and offset with its source),
+`docs/dongle-protocol.md` (the adapter's USB protocol, every id and offset with its source), `docs/packaging.md`
+(what a machine needs to build and run a build),
 `dev/dev-environment.md` (this machine). `docs/research.md` is a dated record of what was known
 before the work started, not current guidance; read it for why a decision was taken, never for
 what the code does now.
